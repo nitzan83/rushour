@@ -363,20 +363,31 @@ test('combo builds on deliveries and resets on a miss', async () => {
   assert.equal((await state()).combo, 0);
 });
 
-test('leveling up opens the perk draft; choosing one resumes the run', async () => {
+test('leveling up: district draft → map transition → perk draft → resume', async () => {
   await page.goto(BASE);
   await startRun();
+  const map0 = await page.evaluate(() => RH.debug().layout.name);
   // one delivery short of a level-up
   await page.evaluate(() => { RH.debug().delivered = RH.Balance.run.deliveriesPerLevel - 1; });
   assert.ok(await waitForAvailable());
   assert.ok(await pickupFirstAvailable());
-  await deliverCarried(); // triggers level 2 → draft
-  assert.ok(await page.isVisible('#perks'), 'perk draft opens');
-  assert.equal(await page.locator('#perk-cards .perk-card').count(), 3);
-  assert.equal(await page.evaluate(() => RH.debug().paused), true, 'run is paused during draft');
+  await deliverCarried(); // triggers level 2 → district draft
+  // district draft comes first
+  assert.ok(await page.isVisible('#districts'), 'district draft opens');
+  assert.equal(await page.locator('#district-cards .perk-card').count(), 3);
+  assert.equal(await page.evaluate(() => RH.debug().paused), true, 'paused during draft');
+  await page.locator('#district-cards .perk-card').first().click();
+  await page.waitForTimeout(80);
+  // map changed, bag cleared (in-flight forgiven), still paused for the perk draft
+  const map1 = await page.evaluate(() => RH.debug().layout.name);
+  assert.notEqual(map1, map0, 'the district (map) changed');
+  assert.equal(await page.evaluate(() => RH.debug().carried.length), 0, 'in-flight orders forgiven');
+  assert.ok(!(await page.isVisible('#districts')), 'district draft closes');
+  assert.ok(await page.isVisible('#perks'), 'perk draft opens next');
+  // choose a perk → resume on the new map
   await page.locator('#perk-cards .perk-card').first().click();
   await page.waitForTimeout(60);
-  assert.ok(!(await page.isVisible('#perks')), 'draft closes after choosing');
+  assert.ok(!(await page.isVisible('#perks')), 'perk draft closes');
   assert.equal(await page.evaluate(() => RH.debug().paused), false, 'run resumes');
 });
 

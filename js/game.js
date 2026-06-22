@@ -75,7 +75,7 @@
     };
     spawnOrder();
     showHUD(true);
-    hide('menu'); hide('gameover'); hide('perks');
+    hide('menu'); hide('gameover'); hide('perks'); hide('districts');
   }
 
   /* ---------------- current modifiers (the funnel) ----------------
@@ -170,7 +170,48 @@
   });
   bus.on('powerup:grabbed', ({ p }) => burst(p.x, p.y, p.color, 16));
   bus.on('order:missed', () => { game.shake = 0.4; });
-  bus.on('level:up', ({ level }) => openDraft(level));
+  // Level-up flow: choose a new DISTRICT (map changes), then a perk.
+  bus.on('level:up', ({ level }) => openDistrictDraft(level));
+
+  /* ---------------- district draft + map transition (v0.5) ---------------- */
+  // build a layout from a generator, rejecting any that isn't fully connected
+  function buildDistrict(gen) {
+    let L;
+    for (let i = 0; i < 12; i++) { L = gen(W, H); if (RH.isConnected(L)) return L; }
+    return L; // fall back to the last one (shouldn't happen for built-in maps)
+  }
+
+  // swap the live map. In-flight orders are forgiven (no miss); combo, perks,
+  // score, cash, misses and level all persist across the transition.
+  function transitionTo(layout) {
+    const g = game;
+    g.layout = layout;
+    g.player.x = layout.spawn.x; g.player.y = layout.spawn.y;
+    g.orders = []; g.carried = []; g.powerups = [];
+    g.spawnTimer = B.run.firstSpawnDelay;
+    g.nearNode = null;
+    spawnOrder();
+    bus.emit('district:enter', { layout });
+  }
+
+  function openDistrictDraft(level) {
+    game.paused = true;
+    document.getElementById('districts-title').textContent = `LEVEL ${level}`;
+    const wrap = document.getElementById('district-cards');
+    wrap.innerHTML = '';
+    RH.draftDistricts(3, game.layout.name).forEach(meta => {
+      const el = document.createElement('div');
+      el.className = 'perk-card';
+      el.innerHTML = `<div class="perk-name">${meta.name}</div><div class="perk-desc">${meta.blurb}</div>`;
+      el.addEventListener('click', () => {
+        transitionTo(buildDistrict(meta.gen));
+        hide('districts');
+        openDraft(level); // chain straight into the perk draft (stays paused)
+      });
+      wrap.appendChild(el);
+    });
+    show('districts');
+  }
 
   /* ---------------- perk draft (3.1) ---------------- */
   function openDraft(level) {

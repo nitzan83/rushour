@@ -1,5 +1,32 @@
 # Rush Hour — Release Notes
 
+## v0.5.0 — "Districts" (2026-06-23)
+
+The map now changes between levels — a run is a climb through a shifting city.
+
+### 🌆 District draft (the map changes every level)
+- At each level-up you now **choose your next district** from 3 maps, each with
+  a one-line tradeoff, then pick your perk. The chosen map loads immediately.
+- **Two new districts** join the pool (now 4): **Old Town** (big blocks, long
+  routes) and **Outskirts** (heavy mud, slow going) — alongside Downtown and
+  Riverside. The draft excludes your current map, so the city always changes.
+- **Transition handling:** on a district change, in-flight orders are
+  **forgiven (no miss)** and powerups clear; **combo, perks, score, cash, and
+  level all persist** — the climb carries forward.
+
+### 🧭 Connectivity guarantee (new infra)
+- `RH.isConnected(layout)` floods the walkable tiles from spawn and verifies
+  **every delivery point is reachable** — no map can soft-lock a run. Built-in
+  districts are validated on generation (regenerate-until-valid).
+
+### ✅ Tests
+- 51 → 54: every district generates a connected, valid map; `isConnected`
+  rejects a walled-off node; `draftDistricts` returns distinct, current-excluded
+  options (unit); full level-up flow — district draft → map transition (bag
+  forgiven) → perk draft → resume (e2e).
+
+---
+
 ## v0.4.3 — "Pocket Courier" (2026-06-23)
 
 Playable on phones now that it's live on the web.

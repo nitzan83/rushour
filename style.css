@@ -139,7 +139,7 @@ h1 {
 #hud-combo { color: var(--accent2); font-weight: 700; }
 
 /* Perk draft */
-#perk-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 18px; }
+#perk-cards, #district-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 18px; }
 .perk-card {
   background: #1d2236;
   border: 1px solid #36406a;

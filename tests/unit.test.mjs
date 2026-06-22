@@ -162,8 +162,37 @@ test('water is a slow, wadeable shortcut (not solid); buildings still block', ()
 test('randomLayout returns a valid layout from the registry', () => {
   assert.ok(RH.LAYOUTS.length >= 2);
   const L = RH.randomLayout(960, 640);
-  assert.ok(['Downtown', 'Riverside'].includes(L.name));
+  assert.ok(RH.DISTRICTS.some(d => d.name === L.name));
   assert.equal(RH.sources(L).length, 4);
+});
+
+/* ---------------- districts (v0.5) ---------------- */
+test('every district generates a fully-connected, valid map', () => {
+  assert.ok(RH.DISTRICTS.length >= 3, 'a pool worth drafting from');
+  for (const d of RH.DISTRICTS) {
+    assert.ok(d.name && d.blurb && typeof d.gen === 'function', `${d.name} well-formed`);
+    const L = d.gen(960, 640);
+    assert.equal(RH.sources(L).length, 4, `${d.name} has 4 sources`);
+    assert.equal(RH.sinks(L).length, 8, `${d.name} has 8 sinks`);
+    assert.ok(RH.isConnected(L), `${d.name} is fully connected (no unreachable node)`);
+  }
+});
+
+test('isConnected rejects a layout with a node walled off from spawn', () => {
+  const L = RH.generateDowntown(960, 640);
+  assert.ok(RH.isConnected(L));
+  // wall the whole map solid except the spawn cell → nodes unreachable
+  const sc = Math.floor(L.spawn.x / L.tile), sr = Math.floor(L.spawn.y / L.tile);
+  for (let i = 0; i < L.grid.length; i++) L.grid[i] = RH.TILE.BUILDING;
+  L.grid[sr * L.cols + sc] = RH.TILE.ROAD;
+  assert.equal(RH.isConnected(L), false);
+});
+
+test('draftDistricts returns n distinct districts, excluding the current one', () => {
+  const picks = RH.draftDistricts(3, 'Downtown');
+  assert.equal(picks.length, 3);
+  assert.equal(new Set(picks.map(p => p.name)).size, 3, 'distinct');
+  assert.ok(!picks.some(p => p.name === 'Downtown'), 'current district excluded');
 });
 
 test('tileAt treats out-of-bounds as building (solid border)', () => {

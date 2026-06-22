@@ -110,7 +110,7 @@
   RH.generateDowntown = function (canvasW, canvasH) {
     const tile = 40;
     const cols = Math.floor(canvasW / tile), rows = Math.floor(canvasH / tile);
-    const layout = { name: 'Downtown', cols, rows, tile, grid: blockGrid(cols, rows), nodes: [], spawn: null };
+    const layout = { name: 'Downtown', blurb: 'Tight, even streets.', cols, rows, tile, grid: blockGrid(cols, rows), nodes: [], spawn: null };
     const sc = Math.round(cols / 2 / 4) * 4, sr = Math.round(rows / 2 / 4) * 4;
     layout.spawn = { x: sc * tile + tile / 2, y: sr * tile + tile / 2 };
     placeNodes(layout);
@@ -125,7 +125,7 @@
     const tile = 40;
     const cols = Math.floor(canvasW / tile), rows = Math.floor(canvasH / tile);
     const grid = blockGrid(cols, rows);
-    const layout = { name: 'Riverside', cols, rows, tile, grid, nodes: [], spawn: null };
+    const layout = { name: 'Riverside', blurb: 'Wade the river for shortcuts.', cols, rows, tile, grid, nodes: [], spawn: null };
     // carve a 2-wide vertical river down the middle; leave the horizontal road
     // rows intact as bridges so both banks stay connected.
     const rc = Math.round(cols / 2);
@@ -141,12 +141,79 @@
     return layout;
   };
 
-  // Registry of available layouts (the layout seam). Pick one per run.
-  RH.LAYOUTS = [RH.generateDowntown, RH.generateRiverside];
+  /* ---- Generator: Old Town — big blocks, long routes, fewer turns ---- */
+  RH.generateOldTown = function (canvasW, canvasH) {
+    const tile = 40;
+    const cols = Math.floor(canvasW / tile), rows = Math.floor(canvasH / tile);
+    const layout = { name: 'Old Town', blurb: 'Big blocks, long routes.', cols, rows, tile, grid: blockGrid(cols, rows, 6), nodes: [], spawn: null };
+    const sc = Math.round(cols / 2 / 6) * 6, sr = Math.round(rows / 2 / 6) * 6;
+    layout.spawn = roadSpawn(layout, sc, sr);
+    placeNodes(layout);
+    sprinkleTerrain(layout, (RH.Balance && RH.Balance.terrain.mudPatches) || 0);
+    return layout;
+  };
+
+  /* ---- Generator: Outskirts — standard grid but heavily muddy (slow) ---- */
+  RH.generateOutskirts = function (canvasW, canvasH) {
+    const tile = 40;
+    const cols = Math.floor(canvasW / tile), rows = Math.floor(canvasH / tile);
+    const layout = { name: 'Outskirts', blurb: 'Muddy and slow — plan ahead.', cols, rows, tile, grid: blockGrid(cols, rows), nodes: [], spawn: null };
+    const sc = Math.round(cols / 2 / 4) * 4, sr = Math.round(rows / 2 / 4) * 4;
+    layout.spawn = { x: sc * tile + tile / 2, y: sr * tile + tile / 2 };
+    placeNodes(layout);
+    sprinkleTerrain(layout, 30); // lots of mud
+    return layout;
+  };
+
+  // Registry of districts (the layout seam). name/blurb shown in the draft.
+  RH.DISTRICTS = [
+    { name: 'Downtown',  blurb: 'Tight, even streets.',        gen: RH.generateDowntown },
+    { name: 'Riverside', blurb: 'Wade the river for shortcuts.', gen: RH.generateRiverside },
+    { name: 'Old Town',  blurb: 'Big blocks, long routes.',    gen: RH.generateOldTown },
+    { name: 'Outskirts', blurb: 'Muddy and slow — plan ahead.', gen: RH.generateOutskirts },
+  ];
+  RH.LAYOUTS = RH.DISTRICTS.map(d => d.gen);
   RH.randomLayout = (w, h) => choice(RH.LAYOUTS)(w, h);
+
+  // pick `n` distinct districts for a draft, preferring to exclude the current one
+  RH.draftDistricts = (n, excludeName) => {
+    const pool = RH.DISTRICTS.slice();
+    for (let i = pool.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const others = pool.filter(d => d.name !== excludeName);
+    const pick = others.slice(0, n);
+    while (pick.length < n && pool.length) { const d = pool.shift(); if (!pick.includes(d)) pick.push(d); }
+    return pick.slice(0, n);
+  };
 
   RH.sources = layout => layout.nodes.filter(n => n.role === 'source');
   RH.sinks = layout => layout.nodes.filter(n => n.role === 'sink');
+
+  /* ---- Connectivity: are all node access tiles reachable from spawn? ----
+     BFS flood over walkable (non-solid) tiles. Guards against a map that
+     soft-locks a run (a node you can't drive to). Generators/transitions
+     should reject any layout this rejects. */
+  RH.isConnected = function (layout) {
+    const { cols, rows, tile } = layout;
+    const sc = Math.floor(layout.spawn.x / tile), sr = Math.floor(layout.spawn.y / tile);
+    const walk = (c, r) => c >= 0 && r >= 0 && c < cols && r < rows && !RH.isSolid(RH.tileAt(layout, c, r));
+    if (!walk(sc, sr)) return false;
+    const seen = new Uint8Array(cols * rows);
+    const q = [[sc, sr]]; seen[sr * cols + sc] = 1;
+    while (q.length) {
+      const [c, r] = q.pop();
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nc = c + dc, nr = r + dr;
+        if (!walk(nc, nr)) continue;
+        const i = nr * cols + nc;
+        if (!seen[i]) { seen[i] = 1; q.push([nc, nr]); }
+      }
+    }
+    // every node's access tile (the road-facing neighbor) must be reachable
+    return layout.nodes.every(n => {
+      const ac = n.cell.c + n.face.dx, ar = n.cell.r + n.face.dy;
+      return ac >= 0 && ar >= 0 && ac < cols && ar < rows && seen[ar * cols + ac];
+    });
+  };
 
   /* ---- Snap a point to the nearest road cell center ----
      Safety net for when a body ends up inside a building (e.g. the ghost
