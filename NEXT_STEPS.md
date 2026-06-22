@@ -53,7 +53,7 @@ Prove the architecture pays off by adding variety with little new plumbing.
 | # | Item | Effort | Seam | Notes |
 |---|------|--------|------|-------|
 | 4.1 | **Stats & achievements** | M | EventBus | Lifetime deliveries, best streak, etc. via event listeners + a stats panel. |
-| 4.2 | **Mobile / touch controls** | M | — | Virtual joystick + tap-to-interact; responsive canvas scaling. |
+| 4.2 | **Mobile / touch controls** | M | — | ✅ **Done (v0.4.3)** — virtual joystick + GO button (touch devices) + fit-to-screen scaling (all devices). |
 | 4.3 | **Pause & settings** | S | — | Pause menu, mute, controls remap. |
 | 4.4 | **Local leaderboard** | S | — | Top scores in `localStorage`; optional hosted leaderboard later. |
 

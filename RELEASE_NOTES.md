@@ -1,5 +1,23 @@
 # Rush Hour — Release Notes
 
+## v0.4.3 — "Pocket Courier" (2026-06-23)
+
+Playable on phones now that it's live on the web.
+
+### 📱 Mobile / touch controls (4.2)
+- **Virtual joystick** (bottom-left) to drive and a **GO button** (bottom-right)
+  to pick up / deliver — shown only on touch devices. Feeds the same input path
+  as the keyboard (`RH.input`), so all gameplay works identically.
+- **Fit-to-screen scaling** on every device: the fixed 960×640 stage scales to
+  the viewport (and re-fits on resize/rotate), so it works on laptops and phones
+  without overflow.
+
+### ✅ Tests
+- 50 → 51: a touch-emulated device shows the controls, the virtual stick moves
+  the courier, and the GO button picks up (e2e).
+
+---
+
 ## v0.4.2 — "Wade In" (2026-06-22)
 
 Gave water an actual gameplay role.

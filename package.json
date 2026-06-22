@@ -1,6 +1,6 @@
 {
   "name": "rush-hour",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Rush Hour — a 2D delivery roguelike (vanilla JS + Canvas)",
   "scripts": {
     "start": "node server.js",

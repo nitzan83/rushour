@@ -18,12 +18,12 @@ npm start          # → http://localhost:8080
 ```
 
 **Controls:** `WASD` / arrows to drive · `SPACE` to pick up / deliver (an
-on-screen prompt appears when you're in range) · `M` to mute/unmute.
+on-screen prompt appears when you're in range) · `M` to mute/unmute. On phones: on-screen joystick + GO button.
 
 ## Test
 
 ```bash
-npm test           # unit + e2e (50 tests)
+npm test           # unit + e2e (51 tests)
 npm run test:unit  # pure-logic, fast, no browser
 npm run test:e2e   # full browser tests (Playwright; auto-installs Chromium)
 ```

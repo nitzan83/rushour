@@ -168,3 +168,41 @@ h1 {
   transition: filter 0.15s ease;
 }
 #mute-btn:hover { filter: brightness(1.2); }
+
+/* Fit-to-screen: #game-wrap is scaled by js/touch.js; keep it centered. */
+#game-wrap { transform-origin: center center; }
+canvas { touch-action: none; }
+
+/* Touch controls (shown only when body.touch) */
+#touch-stick, #touch-go { display: none; }
+body.touch #touch-stick, body.touch #touch-go { display: flex; }
+#touch-stick {
+  position: absolute;
+  left: 26px; bottom: 26px;
+  width: 132px; height: 132px;
+  border-radius: 50%;
+  background: rgba(37, 42, 65, 0.45);
+  border: 2px solid rgba(120, 140, 200, 0.5);
+  align-items: center; justify-content: center;
+  z-index: 8; touch-action: none;
+}
+#touch-knob {
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: rgba(255, 204, 77, 0.85);
+  pointer-events: none;
+}
+#touch-go {
+  position: absolute;
+  right: 30px; bottom: 36px;
+  width: 110px; height: 110px;
+  border-radius: 50%;
+  background: rgba(255, 204, 77, 0.9);
+  color: #1a1d2e;
+  border: none;
+  font-size: 26px; font-weight: 800; letter-spacing: 2px;
+  align-items: center; justify-content: center;
+  z-index: 8; touch-action: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+#touch-go:active { filter: brightness(0.9); }

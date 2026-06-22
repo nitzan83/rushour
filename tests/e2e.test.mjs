@@ -431,3 +431,33 @@ test('upgrades persist across reload', async () => {
   const speedCard = page.locator('#shop .shop-item').first();
   assert.match(await speedCard.locator('.lvl').textContent(), /Lv 2/);
 });
+
+/* ---------------- mobile / touch controls ---------------- */
+test('touch devices get on-screen controls that drive the courier', async () => {
+  const tctx = await browser.newContext({ hasTouch: true, viewport: { width: 414, height: 896 } });
+  const tpage = await tctx.newPage();
+  const errs2 = [];
+  tpage.on('pageerror', e => errs2.push(e.message));
+  await tpage.goto(BASE);
+  // controls show on a touch device
+  assert.ok(await tpage.evaluate(() => document.body.classList.contains('touch')), 'touch class set');
+  assert.ok(await tpage.isVisible('#touch-stick'));
+  assert.ok(await tpage.isVisible('#touch-go'));
+  await tpage.click('#start-btn');
+  await tpage.waitForTimeout(150);
+  // virtual stick input drives movement
+  const x0 = await tpage.evaluate(() => RH.debug().player.x);
+  await tpage.evaluate(() => { RH.input.dx = 1; RH.input.dy = 0; RH.input.active = true; });
+  await tpage.waitForTimeout(200);
+  await tpage.evaluate(() => { RH.input.active = false; });
+  const x1 = await tpage.evaluate(() => RH.debug().player.x);
+  assert.notEqual(x1, x0, 'the virtual stick moved the courier');
+  // GO button triggers pick up
+  await tpage.evaluate(() => { const g = RH.debug(); const o = g.orders.find(o => o.state === 'available'); const n = g.layout.nodes[o.from]; g.player.x = n.x; g.player.y = n.y; });
+  await tpage.waitForTimeout(40);
+  await tpage.tap('#touch-go');
+  await tpage.waitForTimeout(80);
+  assert.equal(await tpage.evaluate(() => RH.debug().carried.length), 1, 'GO button picks up');
+  assert.equal(errs2.length, 0, errs2.join(' | '));
+  await tctx.close();
+});

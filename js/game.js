@@ -16,6 +16,7 @@
   let save = RH.Save.load();
   const bus = RH.EventBus();
   RH.bus = bus; // expose so EventBus listeners (e.g. js/audio.js) can subscribe
+  RH.input = { dx: 0, dy: 0, active: false }; // touch/virtual stick writes here (js/touch.js)
 
   /* ---------------- content & tuning (all numbers in js/balance.js) ---- */
   const B = RH.Balance;
@@ -307,12 +308,13 @@
     // tick effects
     for (const k in g.effects) { g.effects[k] -= dt; if (g.effects[k] <= 0) delete g.effects[k]; }
 
-    // movement
+    // movement (keyboard or virtual stick)
     let dx = 0, dy = 0;
     if (keys['w'] || keys['arrowup']) dy -= 1;
     if (keys['s'] || keys['arrowdown']) dy += 1;
     if (keys['a'] || keys['arrowleft']) dx -= 1;
     if (keys['d'] || keys['arrowright']) dx += 1;
+    if (RH.input.active) { dx += RH.input.dx; dy += RH.input.dy; }
     const prevX = g.player.x, prevY = g.player.y;
     if (dx || dy) {
       const len = Math.hypot(dx, dy); dx /= len; dy /= len;
@@ -693,7 +695,9 @@
     requestAnimationFrame(frame);
   }
 
-  RH.debug = () => game; // dev/test hook: inspect live run state
+  RH.debug = () => game;       // dev/test hook: inspect live run state
+  RH.action = tryInteract;     // SPACE equivalent for the touch action button
+  RH.isPlaying = () => !!game && !game.paused;
 
   document.getElementById('start-btn').addEventListener('click', startRun);
   document.getElementById('continue-btn').addEventListener('click', () => { hide('gameover'); renderShop(); show('menu'); });
