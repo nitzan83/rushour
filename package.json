@@ -1,0 +1,15 @@
+{
+  "name": "rush-hour",
+  "version": "0.4.2",
+  "description": "Rush Hour — a 2D delivery roguelike (vanilla JS + Canvas)",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "test:unit": "node --test tests/unit.test.mjs",
+    "test:e2e": "node --test tests/e2e.test.mjs",
+    "pretest:e2e": "playwright install chromium chromium-headless-shell"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.0"
+  }
+}

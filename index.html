@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rush Hour — Delivery Roguelike</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-wrap">
+    <canvas id="game" width="960" height="640"></canvas>
+
+    <!-- Start / Shop screen between runs -->
+    <div id="menu" class="overlay">
+      <div class="panel">
+        <h1>RUSH HOUR</h1>
+        <p class="tagline">Deliver fast. Don't choke.</p>
+        <div class="stat-row">
+          <span>Bank: <strong id="bank-amount">0</strong>💰</span>
+          <span>Best Score: <strong id="best-score">0</strong></span>
+        </div>
+
+        <div id="shop"></div>
+
+        <button id="start-btn" class="big-btn">START RUN</button>
+        <p class="hint">Move: WASD / Arrows &nbsp;·&nbsp; Press SPACE next to a restaurant to grab an order, next to its house to deliver</p>
+      </div>
+    </div>
+
+    <!-- Game over screen -->
+    <div id="gameover" class="overlay hidden">
+      <div class="panel">
+        <h1>RUN OVER</h1>
+        <div class="stat-row">
+          <span>Score: <strong id="final-score">0</strong></span>
+          <span>Delivered: <strong id="final-delivered">0</strong></span>
+          <span>Earned: <strong id="final-earned">0</strong>💰</span>
+        </div>
+        <button id="continue-btn" class="big-btn">CONTINUE</button>
+      </div>
+    </div>
+
+    <!-- Between-level perk draft -->
+    <div id="perks" class="overlay hidden">
+      <div class="panel">
+        <h1 id="perks-title">LEVEL UP</h1>
+        <p class="tagline">Choose a perk for the rest of the run</p>
+        <div id="perk-cards"></div>
+      </div>
+    </div>
+
+    <!-- Mute toggle (always visible) -->
+    <button id="mute-btn" title="Mute / unmute (M)">🔊</button>
+
+    <!-- In-run HUD -->
+    <div id="hud" class="hidden">
+      <div class="hud-left">
+        <div>SCORE <strong id="hud-score">0</strong></div>
+        <div>CASH <strong id="hud-cash">0</strong>💰</div>
+        <div>LEVEL <strong id="hud-level">1</strong></div>
+      </div>
+      <div class="hud-right">
+        <div id="hud-streak" class="streak-ok">MISSES: 0 / 3</div>
+        <div id="hud-carry">CARRYING: 0 / 1</div>
+        <div id="hud-combo" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/core.js"></script>
+  <script src="js/balance.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/audio.js"></script>
+</body>
+</html>
