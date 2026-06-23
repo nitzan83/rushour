@@ -10,11 +10,16 @@
 
   /* ---- fit the fixed 960×640 stage to any viewport ---- */
   function fit() {
-    const s = Math.min(window.innerWidth / 960, window.innerHeight / 640);
-    wrap.style.transform = `scale(${s})`;
+    const vv = window.visualViewport;
+    const vw = (vv && vv.width) || window.innerWidth;
+    const vh = (vv && vv.height) || window.innerHeight;
+    const s = Math.min(vw / 960, vh / 640);
+    // absolute-centered (translate -50%) then scaled — stays fully on-screen
+    wrap.style.transform = `translate(-50%, -50%) scale(${s})`;
   }
   window.addEventListener('resize', fit);
   window.addEventListener('orientationchange', fit);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
   fit();
 
   /* ---- touch controls (only on touch devices) ---- */

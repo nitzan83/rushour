@@ -472,3 +472,59 @@ test('touch devices get on-screen controls that drive the courier', async () => 
   assert.equal(errs2.length, 0, errs2.join(' | '));
   await tctx.close();
 });
+
+test('on a small phone the whole stage and controls fit within the viewport', async () => {
+  const VW = 390, VH = 844;
+  const tctx = await browser.newContext({ hasTouch: true, viewport: { width: VW, height: VH } });
+  const tpage = await tctx.newPage();
+  await tpage.goto(BASE);
+  await tpage.click('#start-btn');
+  await tpage.waitForTimeout(120);
+  const within = (b, name) => {
+    assert.ok(b, `${name} has a box`);
+    assert.ok(b.x >= -1 && b.y >= -1, `${name} not off the top/left (x=${b.x.toFixed(0)}, y=${b.y.toFixed(0)})`);
+    assert.ok(b.x + b.width <= VW + 1, `${name} fits horizontally (right=${(b.x + b.width).toFixed(0)} ≤ ${VW})`);
+    assert.ok(b.y + b.height <= VH + 1, `${name} fits vertically (bottom=${(b.y + b.height).toFixed(0)} ≤ ${VH})`);
+  };
+  within(await tpage.locator('#game-wrap').boundingBox(), 'stage');
+  within(await tpage.locator('#touch-go').boundingBox(), 'GO button');     // must be reachable
+  within(await tpage.locator('#touch-stick').boundingBox(), 'joystick');   // must be reachable
+  await tctx.close();
+});
+
+test('dragging the on-screen joystick steers the courier (real touch events)', async () => {
+  const tctx = await browser.newContext({ hasTouch: true, viewport: { width: 414, height: 896 } });
+  const tpage = await tctx.newPage();
+  const errs3 = [];
+  tpage.on('pageerror', e => errs3.push(e.message));
+  await tpage.goto(BASE);
+  await tpage.click('#start-btn');
+  await tpage.waitForTimeout(120);
+  // dispatch real touchstart + rightward touchmove on the stick element
+  const input = await tpage.evaluate(() => {
+    const stick = document.getElementById('touch-stick');
+    const r = stick.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const fire = (type, x, y) => {
+      const t = new Touch({ identifier: 1, target: stick, clientX: x, clientY: y });
+      stick.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, changedTouches: [t], touches: [t], targetTouches: [t] }));
+    };
+    fire('touchstart', cx, cy);
+    fire('touchmove', cx + 60, cy); // push right
+    return { active: RH.input.active, dx: RH.input.dx, dy: RH.input.dy };
+  });
+  assert.ok(input.active && input.dx > 0.5 && Math.abs(input.dy) < 0.3, `stick set rightward input (${JSON.stringify(input)})`);
+  const x0 = await tpage.evaluate(() => RH.debug().player.x);
+  await tpage.waitForTimeout(220);
+  const x1 = await tpage.evaluate(() => RH.debug().player.x);
+  assert.ok(x1 > x0, 'courier moved right while the stick was held');
+  // release
+  await tpage.evaluate(() => {
+    const stick = document.getElementById('touch-stick');
+    const t = new Touch({ identifier: 1, target: stick, clientX: 0, clientY: 0 });
+    stick.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, changedTouches: [t], touches: [], targetTouches: [] }));
+  });
+  assert.equal(await tpage.evaluate(() => RH.debug().player ? RH.input.active : false), false, 'releasing stops input');
+  assert.equal(errs3.length, 0, errs3.join(' | '));
+  await tctx.close();
+});

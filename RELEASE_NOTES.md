@@ -1,5 +1,24 @@
 # Rush Hour — Release Notes
 
+## v0.5.1 — mobile scaling fix (2026-06-23)
+
+Fixes a mobile bug where the stage didn't fit the screen and the on-screen
+controls were pushed off the bottom (so you couldn't pick up).
+
+- **Scaling:** the 960×640 stage is now **absolutely centered + scaled** (was a
+  bare `transform: scale`, which left the layout box overflowing the viewport),
+  and the page is locked (`position: fixed`, `overscroll-behavior: none`,
+  `viewport-fit=cover`, no user-zoom). The whole stage — **including the joystick
+  and GO button — now fits on screen** and the controls are reachable.
+- Tracks `visualViewport` so it re-fits when the mobile address bar shows/hides.
+
+### ✅ Tests
+- 54 → 56: the stage + both touch controls fit within a 390×844 viewport;
+  a **real** touch drag on the joystick (dispatched `touchstart`/`touchmove`)
+  steers the courier, and releasing stops it.
+
+---
+
 ## v0.5.0 — "Districts" (2026-06-23)
 
 The map now changes between levels — a run is a climb through a shifting city.

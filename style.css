@@ -12,20 +12,30 @@
 }
 
 html, body {
+  margin: 0;
+  width: 100%;
   height: 100%;
+  position: fixed;
+  inset: 0;
   background: #11131f;
   color: var(--text);
   font-family: 'Segoe UI', system-ui, sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
+/* Fixed 960×640 stage, absolutely centered and scaled to fit by js/touch.js.
+   Absolute centering (not flex) keeps it contained even when the unscaled box
+   is larger than the viewport, so nothing overflows off-screen on phones. */
 #game-wrap {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 50%;
   width: 960px;
   height: 640px;
+  transform: translate(-50%, -50%);   /* JS appends scale(...) */
+  transform-origin: center center;
   box-shadow: 0 20px 60px rgba(0,0,0,0.6);
   border-radius: 12px;
   overflow: hidden;
