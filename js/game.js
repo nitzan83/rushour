@@ -11,12 +11,51 @@
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
+  const TILEPX = 40;             // world tile size in px
+  const wrap = document.getElementById('game-wrap');
+  let W = 960, H = 640;          // playfield size — recomputed to fit the screen
 
   let save = RH.Save.load();
   const bus = RH.EventBus();
   RH.bus = bus; // expose so EventBus listeners (e.g. js/audio.js) can subscribe
   RH.input = { dx: 0, dy: 0, active: false }; // touch/virtual stick writes here (js/touch.js)
+  RH.touchMode = false;          // set true by js/touch.js on touch devices
+
+  /* ---------------- responsive stage (generic across phones) ----------------
+     The board ADAPTS to the viewport: cols/rows are derived from screen size
+     (clamped), so portrait phones get a tall board and the screen is filled —
+     no fixed 960×640 letterbox. Locked at run start; scaled to fit if the
+     viewport later shrinks (e.g. rotation). */
+  function viewport() {
+    const vv = window.visualViewport;
+    return { w: (vv && vv.width) || window.innerWidth, h: (vv && vv.height) || window.innerHeight };
+  }
+  function resizeStage() {
+    const { w: vw, h: vh } = viewport();
+    const cols = clamp(Math.floor(vw / TILEPX), 9, 30);
+    const rows = clamp(Math.floor(vh / TILEPX), 9, 20);
+    W = cols * TILEPX; H = rows * TILEPX;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw in logical (W×H) coords
+    wrap.style.width = W + 'px'; wrap.style.height = H + 'px';
+    RH.stage = { w: W, h: H };
+    fitStage();
+  }
+  function fitStage() {
+    const { w: vw, h: vh } = viewport();
+    const s = Math.min(1, vw / W, vh / H); // only ever scale DOWN to fit
+    wrap.style.transform = `translate(-50%, -50%) scale(${s})`;
+  }
+  // recompute the board only when idle (menus); mid-run just rescale to fit
+  function onResize() { if (!game) resizeStage(); else fitStage(); }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
+
+  // interaction radius — more forgiving on touch (no pixel-perfect aiming)
+  const interactRange = () => RH.touchMode ? 46 : B.player.interactRange;
 
   /* ---------------- content & tuning (all numbers in js/balance.js) ---- */
   const B = RH.Balance;
@@ -32,7 +71,6 @@
   /* ---------------- run state ---------------- */
   let game = null;
   let lastT = 0;
-  const INTERACT_RANGE = B.player.interactRange;
 
   // upgrade-derived modifiers are fixed for the run; built once at start.
   // Built generically from the upgrade defs that declare a `mod`.
@@ -46,6 +84,7 @@
   }
 
   function startRun() {
+    resizeStage();                 // lock the board to the current screen/orientation
     const layout = RH.randomLayout(W, H);
     game = {
       layout,
@@ -296,7 +335,7 @@
   /* ---------------- interaction (SPACE) ---------------- */
   function findNearestNode() {
     const p = game.player;
-    let best = null, bestD = INTERACT_RANGE;
+    let best = null, bestD = interactRange();
     for (const n of game.layout.nodes) {
       const d = dist(p.x, p.y, n.x, n.y);
       if (d < bestD) { bestD = d; best = n; }
@@ -428,8 +467,18 @@
       } else if (p.life <= 0) g.powerups.splice(i, 1);
     }
 
-    // interaction prompt target
+    // interaction prompt target + label (device-appropriate: GO on touch)
     g.nearNode = findNearestNode();
+    g.prompt = null;
+    const n = g.nearNode;
+    if (n) {
+      const verb = RH.touchMode ? 'GO' : 'SPACE';
+      const free = g.capacity - usedSlots();
+      if (n.role === 'source' && g.orders.some(o => o.state === 'available' && o.from === n.id && (o.slots || 1) <= free))
+        g.prompt = `▸ ${verb}: pick up`;
+      else if (n.role === 'sink' && g.carried.some(o => o.to === n.id))
+        g.prompt = `▸ ${verb}: deliver`;
+    }
 
     // particles
     for (let i = g.particles.length - 1; i >= 0; i--) {
@@ -659,20 +708,14 @@
     ctx.fillStyle = '#1a1d2e'; ctx.fillRect(2, -4, 8, 8);
     ctx.restore();
 
-    // SPACE prompt when near an actionable node
+    // interaction prompt (computed in update; says GO on touch, SPACE on desktop)
     const n = g.nearNode;
-    if (n) {
-      let label = null;
-      const free = g.capacity - usedSlots();
-      if (n.role === 'source' && g.orders.some(o => o.state === 'available' && o.from === n.id && (o.slots || 1) <= free)) label = '▸ SPACE: pick up';
-      else if (n.role === 'sink' && g.carried.some(o => o.to === n.id)) label = '▸ SPACE: deliver';
-      if (label) {
-        ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-        const w = ctx.measureText(label).width + 16;
-        ctx.fillStyle = 'rgba(17,19,31,0.85)';
-        roundRect(n.x - w / 2, n.y - 44, w, 22, 6); ctx.fill();
-        ctx.fillStyle = '#ffcc4d'; ctx.fillText(label, n.x, n.y - 25);
-      }
+    if (n && g.prompt) {
+      ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      const w = ctx.measureText(g.prompt).width + 16;
+      ctx.fillStyle = 'rgba(17,19,31,0.85)';
+      roundRect(n.x - w / 2, n.y - 44, w, 22, 6); ctx.fill();
+      ctx.fillStyle = '#ffcc4d'; ctx.fillText(g.prompt, n.x, n.y - 25);
     }
 
     // active effect labels (friendly names so effects read clearly)
@@ -744,5 +787,6 @@
   document.getElementById('continue-btn').addEventListener('click', () => { hide('gameover'); renderShop(); show('menu'); });
 
   renderShop();
+  resizeStage();   // size the stage to the screen before the first frame
   requestAnimationFrame(frame);
 })();

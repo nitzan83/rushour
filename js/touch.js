@@ -1,49 +1,36 @@
 /* ============================================================
-   touch.js — mobile support: fit-to-screen scaling (all devices) +
-   a virtual joystick and action button (touch devices only).
-   Writes movement into RH.input and fires RH.action() for pick up/deliver.
+   touch.js — mobile controls: a virtual joystick + action button.
+   Sizing/scaling of the stage is owned by js/game.js (resizeStage). This
+   module only adds touch input: writes movement into RH.input and fires
+   RH.action() for pick up / deliver (the on-screen equivalent of SPACE).
    ============================================================ */
 (() => {
   'use strict';
   const RH = window.RH;
   const wrap = document.getElementById('game-wrap');
 
-  /* ---- fit the fixed 960×640 stage to any viewport ---- */
-  function fit() {
-    const vv = window.visualViewport;
-    const vw = (vv && vv.width) || window.innerWidth;
-    const vh = (vv && vv.height) || window.innerHeight;
-    const s = Math.min(vw / 960, vh / 640);
-    // absolute-centered (translate -50%) then scaled — stays fully on-screen
-    wrap.style.transform = `translate(-50%, -50%) scale(${s})`;
-  }
-  window.addEventListener('resize', fit);
-  window.addEventListener('orientationchange', fit);
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
-  fit();
-
-  /* ---- touch controls (only on touch devices) ---- */
   const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  RH.touchMode = isTouch;
   if (!isTouch) return;
   document.body.classList.add('touch');
 
-  // build the joystick (left) and action button (right) inside the stage
+  // joystick (left) + action button (right), inside the stage so they scale with it
   const stick = document.createElement('div'); stick.id = 'touch-stick';
   const knob = document.createElement('div'); knob.id = 'touch-knob';
   stick.appendChild(knob);
   const go = document.createElement('button'); go.id = 'touch-go'; go.textContent = 'GO';
   wrap.appendChild(stick); wrap.appendChild(go);
 
-  const RADIUS = 48; // px (in screen space) for full deflection
+  const RADIUS = 48; // px of deflection for full tilt
   let stickId = null;
 
   function setDir(clientX, clientY) {
     const r = stick.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    let dx = clientX - cx, dy = clientY - cy;
+    const dx = clientX - cx, dy = clientY - cy;
     const len = Math.hypot(dx, dy) || 1;
-    const clamped = Math.min(len, RADIUS);
     const nx = dx / len, ny = dy / len;
+    const clamped = Math.min(len, RADIUS);
     knob.style.transform = `translate(${nx * clamped}px, ${ny * clamped}px)`;
     RH.input.dx = nx; RH.input.dy = ny; RH.input.active = true;
   }
@@ -66,5 +53,8 @@
   }, { passive: false });
   stick.addEventListener('touchcancel', release);
 
-  go.addEventListener('touchstart', e => { e.preventDefault(); if (RH.action) RH.action(); }, { passive: false });
+  // Action button → pick up / deliver. pointerdown covers touch (and mouse),
+  // fires once per tap (no double-trigger from touch+mouse synthesis).
+  const act = e => { e.preventDefault(); if (RH.action) RH.action(); };
+  go.addEventListener('pointerdown', act);
 })();

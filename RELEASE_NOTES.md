@@ -1,5 +1,31 @@
 # Rush Hour — Release Notes
 
+## v0.5.2 — mobile experience (2026-06-23)
+
+Makes mobile a first-class way to play.
+
+### 📐 Responsive board (generic across phones)
+- The playfield is no longer a fixed 960×640 letterbox. It now **adapts to the
+  screen**: columns/rows are derived from the viewport (clamped 9–30 × 9–20), so
+  a portrait phone gets a tall board that **fills the screen** (e.g. 360×800 on
+  a 390-wide phone) instead of a small centered strip. Renders at device pixel
+  ratio for crispness. The board locks at run start and rescales (not
+  regenerates) if you rotate mid-run.
+
+### 👆 Pickup works on touch (no spacebar)
+- The on-screen prompt now reads **“GO: pick up / deliver”** on touch (it used
+  to say “SPACE”, which doesn't exist on a phone).
+- **More forgiving interaction range** on touch (46px vs 30px) so you don't need
+  pixel-perfect aim with the joystick.
+- The **GO** button uses a single `pointerdown` handler (no double-trigger).
+
+### ✅ Tests
+- 56 → 59: the board fits the viewport across four phone/tablet sizes; the
+  prompt says GO on touch / SPACE on desktop; GO picks up from ~40px away with
+  no keyboard.
+
+---
+
 ## v0.5.1 — mobile scaling fix (2026-06-23)
 
 Fixes a mobile bug where the stage didn't fit the screen and the on-screen

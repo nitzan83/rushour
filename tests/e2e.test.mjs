@@ -528,3 +528,61 @@ test('dragging the on-screen joystick steers the courier (real touch events)', a
   assert.equal(errs3.length, 0, errs3.join(' | '));
   await tctx.close();
 });
+
+test('the board adapts to the viewport (generic across phone sizes)', async () => {
+  const sizes = [
+    { w: 360, h: 740 },  // small phone, portrait
+    { w: 414, h: 896 },  // large phone, portrait
+    { w: 844, h: 390 },  // phone, landscape
+    { w: 768, h: 1024 }, // tablet, portrait
+  ];
+  for (const s of sizes) {
+    const c = await browser.newContext({ hasTouch: true, viewport: { width: s.w, height: s.h } });
+    const p = await c.newPage();
+    await p.goto(BASE);
+    await p.click('#start-btn');
+    await p.waitForTimeout(120);
+    const stage = await p.evaluate(() => RH.stage);
+    assert.ok(stage.w <= s.w && stage.h <= s.h, `${s.w}x${s.h}: board ${stage.w}x${stage.h} fits the screen`);
+    assert.ok(stage.w / 40 >= 9 && stage.h / 40 >= 9, `${s.w}x${s.h}: board is at least 9x9 cells`);
+    const box = await p.locator('#game-wrap').boundingBox();
+    assert.ok(box.x >= -1 && box.y >= -1 && box.x + box.width <= s.w + 1 && box.y + box.height <= s.h + 1,
+      `${s.w}x${s.h}: stage stays fully on-screen`);
+    assert.equal(await p.evaluate(() => RH.sources(RH.debug().layout).length), 4, `${s.w}x${s.h}: valid run on the adapted board`);
+    await c.close();
+  }
+});
+
+test('the pickup prompt says GO on touch and SPACE on desktop', async () => {
+  // desktop (non-touch context from beforeEach)
+  await page.goto(BASE);
+  await startRun();
+  await page.evaluate(() => { const g = RH.debug(); const o = g.orders.find(o => o.state === 'available'); const n = g.layout.nodes[o.from]; g.player.x = n.x; g.player.y = n.y; });
+  await page.waitForTimeout(80);
+  assert.match(await page.evaluate(() => RH.debug().prompt || ''), /SPACE/, 'desktop prompt mentions SPACE');
+  // touch
+  const c = await browser.newContext({ hasTouch: true, viewport: { width: 414, height: 896 } });
+  const p = await c.newPage();
+  await p.goto(BASE);
+  await p.click('#start-btn');
+  await p.waitForTimeout(120);
+  await p.evaluate(() => { const g = RH.debug(); const o = g.orders.find(o => o.state === 'available'); const n = g.layout.nodes[o.from]; g.player.x = n.x; g.player.y = n.y; });
+  await p.waitForTimeout(80);
+  assert.match(await p.evaluate(() => RH.debug().prompt || ''), /GO/, 'touch prompt mentions GO (no SPACE)');
+  await c.close();
+});
+
+test('GO picks up within the forgiving touch range (no pixel-perfect aim, no spacebar)', async () => {
+  const c = await browser.newContext({ hasTouch: true, viewport: { width: 414, height: 896 } });
+  const p = await c.newPage();
+  await p.goto(BASE);
+  await p.click('#start-btn');
+  await p.waitForTimeout(120);
+  // sit ~40px from the source (within the touch interaction range, not on it)
+  await p.evaluate(() => { const g = RH.debug(); const o = g.orders.find(o => o.state === 'available'); const n = g.layout.nodes[o.from]; g.player.x = n.x + 40; g.player.y = n.y; });
+  await p.waitForTimeout(60);
+  await p.tap('#touch-go');           // pointerdown → RH.action(); no keyboard involved
+  await p.waitForTimeout(80);
+  assert.equal(await p.evaluate(() => RH.debug().carried.length), 1, 'picked up from ~40px away via GO');
+  await c.close();
+});
