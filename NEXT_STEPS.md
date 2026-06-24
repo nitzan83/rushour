@@ -48,7 +48,7 @@ This is the riskiest/most reusable piece — build and test it with **cars first
 
 ## Hazard milestones (in priority order)
 
-### v0.6 "Traffic" — NPC cars you bump into  · **L**
+### v0.6 "Traffic" — NPC cars you bump into  · ✅ shipped
 - Cars drive the roads; colliding **bumps** you (knockback + brief slow), and a
   hard bump can shatter fragile cargo (reuse the v0.4.1 crash path).
 - Builds the **Agents system** above. Cars start appearing at low levels and
@@ -73,7 +73,7 @@ This is the riskiest/most reusable piece — build and test it with **cars first
 - _Combine:_ rides the same modifier funnel as the ⚡ powerup; the powerup can
   later reduce dash cooldown.
 
-### v0.9 "Heat" — police cars  · **M**
+### v0.9 "Police" — police cars  · **M**
 - Police patrol like cars. **Dashing near a police car = a fine** (reckless
   driving) — so dash is powerful but risky around them.
 - Depends on **v0.8 (dash)** + the Agents system. Police appear at higher
@@ -122,7 +122,7 @@ This is the riskiest/most reusable piece — build and test it with **cars first
 v0.6  "Traffic"          → Agents system + NPC cars (bump)        [foundation]
 v0.7  "Mind the People"  → pedestrians & cyclists (hit = fine)
 v0.8  "Dash"             → dash burst (touch DASH button + Shift)
-v0.9  "Heat"             → police cars (dash near = fine)
+v0.9  "Police"           → police cars (dash near = fine)
 v0.10 "Running on Empty" → fuel/charge + stations + gauge
 v0.11 "Endless City"     → procedural districts (scales agents+fuel together)
 v1.0  "Open City"        → seeded daily + leaderboard + polish

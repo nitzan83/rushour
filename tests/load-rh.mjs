@@ -21,6 +21,7 @@ const run = file => (0, eval)(fs.readFileSync(path.join(root, file), 'utf8'));
 run('js/core.js');
 run('js/balance.js');
 run('js/layout.js');
+run('js/agents.js');
 
 export const RH = globalThis.window.RH;
 export const resetStorage = () => store.clear();

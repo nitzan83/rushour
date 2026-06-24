@@ -291,6 +291,26 @@ test('perks are well-formed: a name, a desc, and at least one effect', () => {
   }
 });
 
+/* ---------------- agents (v0.6 traffic) ---------------- */
+test('agent counts scale with level and cap out', () => {
+  const A = RH.Balance.agents;
+  assert.ok(A.countsAt(1).car >= 1, 'at least one car early');
+  assert.ok(A.countsAt(5).car > A.countsAt(1).car, 'more cars at higher levels');
+  assert.ok(A.countsAt(99).car <= A.maxTotal, 'capped at maxTotal');
+});
+
+test('a spawned car sits on a road and stays on roads as it drives', () => {
+  const L = RH.generateDowntown(960, 640);
+  const car = RH.Agents.spawn(L, 'car', RH.Balance.agents.kinds.car);
+  assert.ok(car, 'car spawned');
+  assert.equal(RH.tileAtPx(L, car.x, car.y), RH.TILE.ROAD, 'spawns on a road');
+  // drive for a while; it must never end a step on a non-road tile
+  for (let i = 0; i < 400; i++) {
+    RH.Agents.step(L, car, 0.05);
+    assert.equal(RH.tileAtPx(L, car.x, car.y), RH.TILE.ROAD, `still on a road at step ${i}`);
+  }
+});
+
 /* ---------------- collision ---------------- */
 test('player fully on open road is not moved', () => {
   const L = RH.generateDowntown(960, 640);

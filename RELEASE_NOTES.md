@@ -1,5 +1,31 @@
 # Rush Hour — Release Notes
 
+## v0.6.0 — "Traffic" (2026-06-24)
+
+First hazard of the "escalating danger" arc — and the **Agents system** that the
+next few features (pedestrians, police) reuse.
+
+### 🚗 NPC cars
+- Cars drive the road network (road-following AI: continue straight, turn at
+  intersections, never reverse except at dead ends). They stay on roads only.
+- **Bumping a car** knocks the courier back, briefly **stuns** you (can't drive),
+  and shakes the screen — with a short cooldown so one contact bumps once.
+- **Traffic scales with the level**: ~1 car early, more each level (capped),
+  respawned fresh on every district. This is the "more obstacles each level"
+  mechanic, driven by `RH.Balance.agents.countsAt(level)`.
+- New `js/agents.js` (spawn + road AI) and an `agent:hit` event for juice/sound.
+
+### 🔧 CI
+- A GitHub Actions workflow now runs the full test suite (`npm test`) on every
+  push and PR.
+
+### ✅ Tests
+- 59 → 62: agent counts scale + cap; a spawned car stays on roads across 400
+  steps (unit); cars spawn in a run and a bump stuns + knocks back the courier
+  (e2e).
+
+---
+
 ## v0.5.2 — mobile experience (2026-06-23)
 
 Makes mobile a first-class way to play.

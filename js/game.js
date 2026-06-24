@@ -110,8 +110,12 @@
       rings: [],            // expanding ring "pops" on pickup/deliver
       shake: 0,
       crashCooldown: 0,     // debounce for fragile-breaking crashes
+      agents: [],           // moving NPCs (cars, …)
+      stun: 0,              // >0 while reeling from a car bump (can't drive)
+      bumpCd: 0,            // debounce so one contact bumps once
       nearNode: null,       // node currently in interaction range (for prompt)
     };
+    spawnAgents();
     spawnOrder();
     showHUD(true);
     hide('menu'); hide('gameover'); hide('perks'); hide('districts');
@@ -174,6 +178,20 @@
     game.powerups.push({ type, ...POWERUPS[type], x, y, r: 14, life: 12 });
   }
 
+  // (re)spawn the level's agents on the current map
+  function spawnAgents() {
+    const g = game;
+    g.agents = [];
+    const counts = B.agents.countsAt(g.level);
+    for (const kind in counts) {
+      const cfg = B.agents.kinds[kind];
+      for (let i = 0; i < counts[kind]; i++) {
+        const a = RH.Agents.spawn(g.layout, kind, cfg);
+        if (a) g.agents.push(a);
+      }
+    }
+  }
+
   // timed powerups set an active effect; instant ones fire once on pickup
   function applyPowerup(p) {
     const def = POWERUPS[p.type];
@@ -209,6 +227,7 @@
   });
   bus.on('powerup:grabbed', ({ p }) => burst(p.x, p.y, p.color, 16));
   bus.on('order:missed', () => { game.shake = 0.4; });
+  bus.on('agent:hit', ({ agent }) => burst(agent.x, agent.y, agent.color, 8));
   // Level-up flow: choose a new DISTRICT (map changes), then a perk.
   bus.on('level:up', ({ level }) => openDistrictDraft(level));
 
@@ -228,7 +247,9 @@
     g.player.x = layout.spawn.x; g.player.y = layout.spawn.y;
     g.orders = []; g.carried = []; g.powerups = [];
     g.spawnTimer = B.run.firstSpawnDelay;
+    g.stun = 0; g.bumpCd = 0;
     g.nearNode = null;
+    spawnAgents();   // fresh traffic for the new district + level count
     spawnOrder();
     bus.emit('district:enter', { layout });
   }
@@ -395,6 +416,7 @@
     if (keys['a'] || keys['arrowleft']) dx -= 1;
     if (keys['d'] || keys['arrowright']) dx += 1;
     if (RH.input.active) { dx += RH.input.dx; dy += RH.input.dy; }
+    if (g.stun > 0) { dx = 0; dy = 0; } // reeling from a car bump
     const prevX = g.player.x, prevY = g.player.y;
     if (dx || dy) {
       const len = Math.hypot(dx, dy); dx /= len; dy /= len;
@@ -465,6 +487,22 @@
         bus.emit('powerup:grabbed', { p });
         g.powerups.splice(i, 1);
       } else if (p.life <= 0) g.powerups.splice(i, 1);
+    }
+
+    // agents (cars): drive the roads and bump the courier on contact
+    g.bumpCd -= dt; g.stun -= dt;
+    for (const a of g.agents) RH.Agents.step(g.layout, a, dt);
+    for (const a of g.agents) {
+      const cfg = B.agents.kinds[a.kind];
+      if (cfg.bump && g.bumpCd <= 0 && dist(px, py, a.x, a.y) < g.player.r + a.r) {
+        const dx = g.player.x - a.x, dy = g.player.y - a.y, d = Math.hypot(dx, dy) || 1;
+        g.player.x += (dx / d) * B.agents.knockback;
+        g.player.y += (dy / d) * B.agents.knockback;
+        RH.resolveCollision(g.layout, g.player);
+        g.stun = B.agents.bumpStun; g.bumpCd = B.agents.bumpCooldown;
+        g.shake = Math.max(g.shake, 0.35);
+        bus.emit('agent:hit', { agent: a });
+      }
     }
 
     // interaction prompt target + label (device-appropriate: GO on touch)
@@ -690,6 +728,18 @@
       ctx.fillText(f.text, f.x, f.y);
     }
     ctx.globalAlpha = 1;
+
+    // agents (cars): a body with a darker windshield, oriented by heading
+    for (const a of g.agents) {
+      ctx.save();
+      ctx.translate(a.x, a.y);
+      ctx.rotate(a.dir);
+      ctx.fillStyle = a.color;
+      roundRect(-a.r, -a.r * 0.7, a.r * 2, a.r * 1.4, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      roundRect(a.r * 0.1, -a.r * 0.5, a.r * 0.7, a.r, 2); ctx.fill();
+      ctx.restore();
+    }
 
     // player
     const pl = g.player;

@@ -342,6 +342,26 @@ test('refuel instantly adds time to all active orders', async () => {
   assert.ok(after > before.time, `order time should rise (was ${before.time}, now ${after})`);
 });
 
+/* ---------------- traffic / agents (v0.6) ---------------- */
+test('cars spawn during a run and bumping one stuns + knocks back the courier', async () => {
+  await page.goto(BASE);
+  await startRun();
+  const cars = await page.evaluate(() => RH.debug().agents.length);
+  assert.ok(cars >= 1, 'at least one car spawned');
+  // teleport a car onto the courier and step a frame → bump
+  const res = await page.evaluate(() => {
+    const g = RH.debug();
+    g.stun = 0; g.bumpCd = 0;
+    const a = g.agents[0];
+    a.x = g.player.x; a.y = g.player.y; // overlap
+    return { px: g.player.x, py: g.player.y };
+  });
+  await page.waitForTimeout(80);
+  const after = await page.evaluate(() => { const g = RH.debug(); return { stun: g.stun, px: g.player.x, py: g.player.y }; });
+  assert.ok(after.stun > 0, 'bump stunned the courier');
+  assert.ok(Math.hypot(after.px - res.px, after.py - res.py) > 1, 'bump knocked the courier back');
+});
+
 /* ---------------- combo & perk draft (v0.4) ---------------- */
 test('combo builds on deliveries and resets on a miss', async () => {
   await page.goto(BASE);

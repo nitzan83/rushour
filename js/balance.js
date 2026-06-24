@@ -28,6 +28,21 @@
     // Terrain tiles that change movement (slow/mud); placed by sprinkleTerrain.
     terrain: { mudPatches: 10 },
 
+    // Moving NPC agents (the "more hazards each level" system).
+    agents: {
+      maxTotal: 12,
+      bumpStun: 0.35,     // sec the courier is stunned after hitting a car
+      bumpCooldown: 0.7,  // sec before the same contact can bump again
+      knockback: 16,      // px the courier is shoved on a bump
+      kinds: {
+        car: { speed: 95, r: 12, color: '#ff5c5c', bump: true },
+      },
+      // how many of each kind exist at a given level (scales the difficulty)
+      countsAt(level) {
+        return { car: Math.min(this.maxTotal, 1 + Math.floor(level * 0.8)) };
+      },
+    },
+
     powerupSpawn: { firstMin: 8, firstMax: 13, min: 10, max: 16 }, // sec
 
     order: {
