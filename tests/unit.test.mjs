@@ -316,6 +316,13 @@ test('people (cyclists/peds) appear from level 2 and carry a fine, not a bump', 
   assert.ok(A.kinds.car.bump && !A.kinds.car.fine, 'cars bump, no fine');
 });
 
+test('police appear from level 3 and fine you for dashing nearby', () => {
+  const A = RH.Balance.agents;
+  assert.equal(A.countsAt(2).police, 0, 'no police before level 3');
+  assert.ok(A.countsAt(4).police > 0, 'police from level 3+');
+  assert.ok(A.kinds.police.dashFine > 0 && A.kinds.police.detect > 0, 'police fine on dash proximity');
+});
+
 test('a spawned car sits on a road and stays on roads as it drives', () => {
   const L = RH.generateDowntown(960, 640);
   const car = RH.Agents.spawn(L, 'car', RH.Balance.agents.kinds.car);

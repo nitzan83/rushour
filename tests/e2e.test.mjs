@@ -414,6 +414,30 @@ test('dash gives a burst of speed and then goes on cooldown', async () => {
   assert.ok(blocked, 'cannot dash again while on cooldown');
 });
 
+/* ---------------- police (v0.9) ---------------- */
+test('dashing near a police car fines you; just driving near it does not', async () => {
+  await page.goto(BASE);
+  await startRun();
+  // place a police car a short distance from a stationary courier
+  await page.evaluate(() => {
+    const g = RH.debug();
+    g.cash = 100; g.combo = 5; g.agents = []; g.dashTime = 0; g.dashCd = 0;
+    const cfg = RH.Balance.agents.kinds.police;
+    g.agents.push({ kind: 'police', r: cfg.r, speed: 0, color: cfg.color,
+      cc: 0, cr: 0, pc: 0, pr: 0, tc: 0, tr: 0, hdc: 0, hdr: 0, dir: 0, heatCd: 0,
+      x: g.player.x + 40, y: g.player.y }); // within the ~66px detect radius
+  });
+  // not dashing → no fine
+  await page.waitForTimeout(120);
+  assert.equal(await page.evaluate(() => RH.debug().cash), 100, 'no fine without a dash');
+  // dash near the cop → fine
+  await page.evaluate(() => { const g = RH.debug(); g.dashCd = 0; RH.dash(); });
+  await page.waitForTimeout(120);
+  const s = await page.evaluate(() => { const g = RH.debug(); return { cash: g.cash, combo: g.combo }; });
+  assert.ok(s.cash < 100, 'dashing near police charges a fine');
+  assert.equal(s.combo, 0, 'reckless fine breaks combo');
+});
+
 /* ---------------- combo & perk draft (v0.4) ---------------- */
 test('combo builds on deliveries and resets on a miss', async () => {
   await page.goto(BASE);

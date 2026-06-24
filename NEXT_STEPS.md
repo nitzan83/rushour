@@ -73,7 +73,7 @@ This is the riskiest/most reusable piece — build and test it with **cars first
 - _Combine:_ rides the same modifier funnel as the ⚡ powerup; the powerup can
   later reduce dash cooldown.
 
-### v0.9 "Police" — police cars  · **M**
+### v0.9 "Police" — police cars  · ✅ shipped
 - Police patrol like cars. **Dashing near a police car = a fine** (reckless
   driving) — so dash is powerful but risky around them.
 - Depends on **v0.8 (dash)** + the Agents system. Police appear at higher

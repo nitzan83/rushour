@@ -36,18 +36,20 @@
       bumpCooldown: 0.7,  // sec before the same contact can bump again
       knockback: 16,      // px the courier is shoved on a bump
       fineCooldown: 0.8,  // sec before the same person can fine you again
+      heatCooldown: 1.0,  // sec before the same cop can fine you again
       kinds: {
         car:     { speed: 95, r: 12, color: '#ff5c5c', bump: true },
-        cyclist: { speed: 68, r: 9,  color: '#5fd9ff', fine: 8 },   // hit = fine
-        ped:     { speed: 30, r: 8,  color: '#ffd27f', fine: 5 },   // hit = fine
+        cyclist: { speed: 68, r: 9,  color: '#5fd9ff', fine: 8 },              // hit = fine
+        ped:     { speed: 30, r: 8,  color: '#ffd27f', fine: 5 },              // hit = fine
+        police:  { speed: 85, r: 12, color: '#3a6cff', bump: true, dashFine: 15, detect: 66 }, // dash near = fine
       },
-      // how many of each kind at a given level (cars from L1; people from L2)
+      // how many of each kind at a given level (cars L1; people L2; police L3)
       countsAt(level) {
-        const cap = this.maxTotal;
         return {
           car:     Math.min(8, 1 + Math.floor(level * 0.6)),
           cyclist: level >= 2 ? Math.min(4, Math.floor((level - 1) * 0.5)) : 0,
           ped:     level >= 2 ? Math.min(6, Math.floor((level - 1) * 0.7)) : 0,
+          police:  level >= 3 ? Math.min(3, Math.floor((level - 2) * 0.6)) : 0,
         };
       },
     },

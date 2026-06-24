@@ -1,5 +1,22 @@
 # Rush Hour — Release Notes
 
+## v0.9.0 — "Police" (2026-06-24)
+
+Risk on the dash.
+
+### 🚓 Police cars
+- Patrol the roads (blue car, flashing light bar) from level 3. They bump like
+  any car — but **dashing within range of one is "reckless driving" and fines
+  you** (`RECKLESS -$N`, breaks combo), with a per-cop cooldown.
+- Makes dash a real risk/reward call around them. New `dashFine`/`detect` config
+  on the agent kind; reuses the `fine` event.
+
+### ✅ Tests
+- 66 → 68: police appear from level 3 with a dash-fine (unit); dashing near a cop
+  charges a fine + breaks combo while merely driving near does not (e2e).
+
+---
+
 ## v0.8.0 — "Dash" (2026-06-24)
 
 A skill move for weaving through the new traffic.

@@ -231,9 +231,10 @@
   bus.on('powerup:grabbed', ({ p }) => burst(p.x, p.y, p.color, 16));
   bus.on('order:missed', () => { game.shake = 0.4; });
   bus.on('agent:hit', ({ agent }) => burst(agent.x, agent.y, agent.color, 8));
-  bus.on('fine', ({ agent, amount }) => {
+  bus.on('fine', ({ agent, amount, reason }) => {
     burst(agent.x, agent.y, '#ff6b6b', 10);
-    game.floaters.push({ x: game.player.x, y: game.player.y - 16, text: `-$${amount} FINE`, color: '#ff6b6b', big: true, life: 1.2, age: 0 });
+    const text = reason === 'reckless' ? `RECKLESS -$${amount}` : `-$${amount} FINE`;
+    game.floaters.push({ x: game.player.x, y: game.player.y - 16, text, color: '#ff6b6b', big: true, life: 1.2, age: 0 });
   });
   // Level-up flow: choose a new DISTRICT (map changes), then a perk.
   bus.on('level:up', ({ level }) => openDistrictDraft(level));
@@ -515,6 +516,19 @@
     for (const a of g.agents) {
       RH.Agents.step(g.layout, a, dt);
       if (a.fineCd > 0) a.fineCd -= dt;
+      if (a.heatCd > 0) a.heatCd -= dt;
+    }
+    // police: dashing near a cop is reckless → fine
+    if (g.dashTime > 0) {
+      for (const a of g.agents) {
+        const cfg = B.agents.kinds[a.kind];
+        if (cfg.dashFine && (a.heatCd || 0) <= 0 && dist(px, py, a.x, a.y) < cfg.detect) {
+          const amount = Math.min(g.cash, cfg.dashFine);
+          g.cash -= amount; g.combo = 0; a.heatCd = B.agents.heatCooldown;
+          g.shake = Math.max(g.shake, 0.4);
+          bus.emit('fine', { agent: a, amount: cfg.dashFine, reason: 'reckless' });
+        }
+      }
     }
     for (const a of g.agents) {
       const cfg = B.agents.kinds[a.kind];
@@ -761,15 +775,19 @@
     }
     ctx.globalAlpha = 1;
 
-    // agents: cars are rects (windshield), people are dots (hit = fine)
+    // agents: cars/police are rects (windshield), people are dots (hit = fine)
     for (const a of g.agents) {
-      if (a.kind === 'car') {
+      if (a.kind === 'car' || a.kind === 'police') {
         ctx.save();
         ctx.translate(a.x, a.y); ctx.rotate(a.dir);
         ctx.fillStyle = a.color;
         roundRect(-a.r, -a.r * 0.7, a.r * 2, a.r * 1.4, 4); ctx.fill();
         ctx.fillStyle = 'rgba(0,0,0,0.35)';
         roundRect(a.r * 0.1, -a.r * 0.5, a.r * 0.7, a.r, 2); ctx.fill();
+        if (a.kind === 'police') { // flashing light bar
+          ctx.fillStyle = (Math.sin(g.runTime * 12) > 0) ? '#ff3b3b' : '#ffffff';
+          ctx.fillRect(-a.r * 0.5, -a.r * 0.25, a.r * 0.5, a.r * 0.5);
+        }
         ctx.restore();
       } else {
         ctx.fillStyle = a.color;
