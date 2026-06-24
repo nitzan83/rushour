@@ -184,8 +184,8 @@ h1 {
 canvas { touch-action: none; }
 
 /* Touch controls (shown only when body.touch) */
-#touch-stick, #touch-go { display: none; }
-body.touch #touch-stick, body.touch #touch-go { display: flex; }
+#touch-stick, #touch-go, #touch-dash { display: none; }
+body.touch #touch-stick, body.touch #touch-go, body.touch #touch-dash { display: flex; }
 #touch-stick {
   position: absolute;
   left: 26px; bottom: 26px;
@@ -230,3 +230,30 @@ body.touch #touch-stick, body.touch #touch-go { display: flex; }
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 #touch-dash:active { filter: brightness(0.85); }
+
+/* Developer / cheat panel (toggled by ` or ?dev=1) */
+#dev-panel {
+  position: fixed;
+  top: 8px; left: 8px;
+  z-index: 100;
+  display: none;
+  width: 250px;
+  max-height: 92vh;
+  overflow: auto;
+  background: rgba(10, 12, 20, 0.92);
+  border: 1px solid #36406a;
+  border-radius: 8px;
+  padding: 8px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #e8ecf5;
+}
+#dev-panel .dev-title { font-weight: 700; font-size: 12px; color: #ffcc4d; margin-bottom: 4px; }
+#dev-panel .dev-readout { font-size: 11px; color: #5fd9ff; margin-bottom: 6px; min-height: 14px; }
+#dev-panel .dev-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 4px; }
+#dev-panel .dev-label { font-size: 10px; color: #8a90a8; width: 52px; flex: 0 0 52px; }
+#dev-panel button {
+  background: #252a41; color: #e8ecf5; border: 1px solid #36406a;
+  border-radius: 5px; padding: 3px 7px; font-size: 12px; cursor: pointer;
+}
+#dev-panel button:hover { border-color: #4dd0ff; }
+#dev-panel .dev-hint { font-size: 9.5px; color: #707898; line-height: 1.4; }

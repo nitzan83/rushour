@@ -23,10 +23,17 @@ on-screen prompt appears when you're in range) · `Shift` to dash · `M` to mute
 ## Test
 
 ```bash
-npm test           # unit + e2e (71 tests)
+npm test           # unit + e2e (72 tests)
 npm run test:unit  # pure-logic, fast, no browser
 npm run test:e2e   # full browser tests (Playwright; auto-installs Chromium)
 ```
+
+## Dev / cheat mode
+
+Press **`` ` ``** (backtick) or open with **`?dev=1`** for a panel to jump
+levels, spawn cars/people/police, force order kinds, trigger powerups, set
+fuel/cash, and toggle god mode — fast testing of everything implemented.
+Keys while open: `[`/`]` level ±, `1`–`9` jump, `g` god, `n` new map, `c` +$.
 
 ## Docs
 

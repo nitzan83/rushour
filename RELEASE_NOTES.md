@@ -1,5 +1,26 @@
 # Rush Hour — Release Notes
 
+## v0.10.1 — dev / cheat mode (2026-06-24)
+
+A built-in developer panel for fast testing of everything implemented.
+
+### 🛠️ Dev mode
+- Toggle with the **`` ` ``** key, or open with **`?dev=1`**. A panel (`js/dev.js`
+  → `RH.dev` API) lets you: **jump to any level** (respawning that level's
+  traffic), spawn a new random district, **spawn cars/cyclists/peds/police**,
+  **force any order kind** (rush/bulky/fragile/vip), trigger any powerup, set
+  fuel/cash, and toggle **god mode** (no bumps/fines). Live readout of
+  level/map/cash/combo.
+- Keys while open: `[`/`]` level ±, `1`–`9` jump, `g` god, `n` new map, `c` +$.
+- Fixed the dev/static server to serve `index.html` for `/?query` URLs (so
+  `?dev=1` works locally too). Hardened a zero-distance bump edge case.
+
+### ✅ Tests
+- 71 → 72: dev panel opens with `?dev=1`; jump/spawn/force-order/god-mode all
+  work via `RH.dev` (e2e). Suite stable across repeated runs.
+
+---
+
 ## v0.10.0 — "Running on Empty" (2026-06-24)
 
 The last hazard of the arc: keep the bike charged.

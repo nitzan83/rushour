@@ -7,7 +7,8 @@ const PORT = process.env.PORT || 8080;
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
 
 http.createServer((req, res) => {
-  let file = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+  let file = req.url.split('?')[0];   // strip query (e.g. /?dev=1)
+  if (file === '/') file = '/index.html';
   const full = path.join(__dirname, path.normalize(file));
   if (!full.startsWith(__dirname)) { res.writeHead(403); return res.end('Forbidden'); }
   fs.readFile(full, (err, data) => {

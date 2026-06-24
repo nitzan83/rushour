@@ -19,7 +19,8 @@ let server, browser, context, page, errors;
 
 before(async () => {
   server = http.createServer((req, res) => {
-    const file = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+    let file = req.url.split('?')[0];        // strip query first (e.g. /?dev=1)
+    if (file === '/') file = '/index.html';
     const full = path.join(root, path.normalize(file));
     fs.readFile(full, (err, data) => {
       if (err) { res.writeHead(404); return res.end('nope'); }
@@ -477,6 +478,39 @@ test('charge drains while driving, tops off at a station, and runs dry to a craw
   });
   // a full-speed 200ms run covers ~40px; empty should be far less
   assert.ok(crawl < 20, `empty tank crawls (moved ${crawl.toFixed(1)}px)`);
+});
+
+/* ---------------- dev / cheat mode ---------------- */
+test('dev mode: ?dev=1 panel, jump levels, spawn agents, god mode', async () => {
+  const c = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+  const p = await c.newPage();
+  const errs = []; p.on('pageerror', e => errs.push('' + e));
+  await p.goto(BASE + '?dev=1');
+  assert.ok(await p.isVisible('#dev-panel'), 'dev panel shows with ?dev=1');
+  await p.click('#start-btn');
+  await p.waitForTimeout(120);
+  // jump to level 7 via the API → level set + traffic refreshed for that level
+  await p.evaluate(() => RH.dev.jump(7));
+  await p.waitForTimeout(60);
+  const s1 = await p.evaluate(() => { const g = RH.debug(); return { level: g.level, cars: g.agents.filter(a => a.kind === 'car').length, police: g.agents.filter(a => a.kind === 'police').length }; });
+  assert.equal(s1.level, 7, 'jumped to level 7');
+  assert.ok(s1.cars >= 1, 'traffic respawned for the level');
+  assert.ok(s1.police >= 1, 'police present at high level');
+  // spawn a fragile order + a cyclist on demand
+  await p.evaluate(() => { RH.dev.order('fragile'); RH.dev.spawnAgent('cyclist'); });
+  const s2 = await p.evaluate(() => { const g = RH.debug(); return { fragile: g.orders.some(o => o.kind === 'fragile'), cyclist: g.agents.some(a => a.kind === 'cyclist') }; });
+  assert.ok(s2.fragile, 'dev forced a fragile order');
+  assert.ok(s2.cyclist, 'dev spawned a cyclist');
+  // god mode prevents fines: drop a ped on the courier, no cash loss
+  await p.evaluate(() => {
+    const g = RH.debug(); g.cash = 100; RH.dev.god();
+    const cfg = RH.Balance.agents.kinds.ped;
+    g.agents.push({ kind: 'ped', r: cfg.r, speed: 0, color: cfg.color, cc: 0, cr: 0, pc: 0, pr: 0, tc: 0, tr: 0, hdc: 0, hdr: 0, dir: 0, fineCd: 0, x: g.player.x, y: g.player.y });
+  });
+  await p.waitForTimeout(80);
+  assert.equal(await p.evaluate(() => RH.debug().cash), 100, 'god mode: no fine charged');
+  assert.equal(errs.length, 0, errs.join(' | '));
+  await c.close();
 });
 
 /* ---------------- combo & perk draft (v0.4) ---------------- */

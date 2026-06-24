@@ -145,17 +145,17 @@
   const stat = (base, name) => RH.Stats.resolve(base, name, activeMods());
 
   /* ---------------- spawning ---------------- */
-  function spawnOrder() {
+  function spawnOrder(forceKind) {
     const d = difficulty(game.level);
     const avail = game.orders.filter(o => o.state === 'available');
-    if (avail.length >= d.maxActive) return;
+    if (!forceKind && avail.length >= d.maxActive) return; // dev force bypasses the cap
 
     const from = choice(RH.sources(game.layout));
     const to = choice(RH.sinks(game.layout));
     const travel = dist(from.x, from.y, to.x, to.y);
     const O = B.order;
     // roll an order kind (normal / rush / bulky / vip) and apply its modifiers
-    const kindKey = O.rollKind(game.level);
+    const kindKey = forceKind || O.rollKind(game.level);
     const kind = O.kinds[kindKey];
     const staticMods = game.upgradeMods.concat(game.perkMods); // upgrades + run perks
     const timeBudget = RH.Stats.resolve((d.timeBudget + travel / O.timeTravelDivisor) * kind.timeMult, 'time', staticMods);
@@ -533,7 +533,7 @@
       if (a.heatCd > 0) a.heatCd -= dt;
     }
     // police: dashing near a cop is reckless → fine
-    if (g.dashTime > 0) {
+    if (g.dashTime > 0 && !g.god) {
       for (const a of g.agents) {
         const cfg = B.agents.kinds[a.kind];
         if (cfg.dashFine && (a.heatCd || 0) <= 0 && dist(px, py, a.x, a.y) < cfg.detect) {
@@ -545,6 +545,7 @@
       }
     }
     for (const a of g.agents) {
+      if (g.god) break; // dev god mode: no bumps or fines
       const cfg = B.agents.kinds[a.kind];
       if (dist(px, py, a.x, a.y) >= g.player.r + a.r) continue;
       if (cfg.bump && g.bumpCd <= 0) {
@@ -924,6 +925,24 @@
   RH.debug = () => game;       // dev/test hook: inspect live run state
   RH.action = tryInteract;     // SPACE equivalent for the touch action button
   RH.dash = triggerDash;       // DASH button / Shift key
+
+  // ---- developer / cheat API (used by js/dev.js) ----
+  RH.dev = {
+    playing: () => !!game && !game.paused,
+    state: () => game,
+    start: () => { if (!game) startRun(); },           // begin a run from the menu
+    jump(n) { if (game) { game.level = Math.max(1, n | 0); spawnAgents(); } }, // set level + refresh traffic
+    level(d) { if (game) this.jump(game.level + d); },
+    newMap() { if (game) transitionTo(buildDistrict(choice(RH.LAYOUTS))); },
+    cash(n) { if (game) game.cash = Math.max(0, game.cash + n); },
+    fuel(frac) { if (game) game.fuel = game.maxFuel * frac; },
+    powerup(type) { if (game && POWERUPS[type]) applyPowerup({ type, ...POWERUPS[type] }); },
+    spawnAgent(kind) { if (game && B.agents.kinds[kind]) { const a = RH.Agents.spawn(game.layout, kind, B.agents.kinds[kind]); if (a) game.agents.push(a); } },
+    order(kind) { if (game) spawnOrder(kind); },
+    clearTraffic() { if (game) game.agents = []; },
+    god() { if (!game) return false; game.god = !game.god; return game.god; },
+    endRun() { if (game) endRun(); },
+  };
   RH.isPlaying = () => !!game && !game.paused;
 
   document.getElementById('start-btn').addEventListener('click', startRun);
