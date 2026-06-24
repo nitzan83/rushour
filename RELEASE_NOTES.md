@@ -1,5 +1,29 @@
 # Rush Hour — Release Notes
 
+## v0.10.0 — "Running on Empty" (2026-06-24)
+
+The last hazard of the arc: keep the bike charged.
+
+### 🔋 Fuel / charge
+- The bike has a **charge** that drains as you drive (HUD gauge along the
+  bottom). **Charge stations** (teal ⚡ pads, 2 per map) top you off on proximity.
+- Run dry → you **crawl** (30% speed) until you reach a station — soft-fail
+  pressure, not an instant loss.
+- New shop upgrade **Bigger Battery** (+25% charge/level). Charge persists across
+  district changes within a run.
+
+### 🐛 Fixes
+- Fixed a zero-distance car bump leaving no knockback direction (now shoves you
+  backward along your heading).
+- De-flaked the touch "forgiving range" test (it could pick a neighboring node);
+  this was the intermittent v0.7 CI failure. Suite is stable (5/5 local runs).
+
+### ✅ Tests
+- 68 → 71: fuel drains while driving, recharges at a station, and crawls when
+  empty (e2e); fuel/battery config + every district places stations (unit).
+
+---
+
 ## v0.9.0 — "Police" (2026-06-24)
 
 Risk on the dash.

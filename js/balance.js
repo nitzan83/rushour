@@ -29,6 +29,16 @@
     // Terrain tiles that change movement (slow/mud); placed by sprinkleTerrain.
     terrain: { mudPatches: 10 },
 
+    // Fuel / charge: drains as you drive; refill at stations; empty = crawl.
+    fuel: {
+      max: 100,
+      drainPerPx: 0.03,   // charge used per px travelled (~3300px per full tank)
+      refillPerSec: 55,   // top-off rate while near a station
+      refuelRange: 34,    // px from a station to refuel
+      emptyMult: 0.3,     // move speed when out of charge
+      stations: 2,        // charge stations placed per map
+    },
+
     // Moving NPC agents (the "more hazards each level" system).
     agents: {
       maxTotal: 12,
@@ -129,6 +139,7 @@
       capacity: { name: 'Bigger Bag',  desc: '+1 order carried', max: 4, baseCost: 80, growth: 2.0, capacityPerLevel: 1 },
       time:     { name: 'Route Sense', desc: '+15% order time',  max: 5, baseCost: 60, growth: 1.7, mod: { stat: 'time', perLevel: 0.15 } },
       pay:      { name: 'Good Rep',    desc: '+15% delivery pay', max: 5, baseCost: 70, growth: 1.7, mod: { stat: 'pay', perLevel: 0.15 } },
+      battery:  { name: 'Bigger Battery', desc: '+25% charge',    max: 4, baseCost: 65, growth: 1.7, fuelPerLevel: 0.25 },
     },
 
     // Powerups. Timed ones set an active effect for `dur` seconds; `mods` feed

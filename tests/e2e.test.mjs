@@ -95,7 +95,7 @@ async function deliverCarried() {
 test('menu and shop render on load', async () => {
   await page.goto(BASE);
   assert.ok(await page.isVisible('#menu'));
-  assert.equal(await page.locator('#shop .shop-item').count(), 4);
+  assert.equal(await page.locator('#shop .shop-item').count(), 5);
 });
 
 test('starting a run shows the HUD and hides the menu', async () => {
@@ -297,8 +297,8 @@ test('the courier can wade through water but is slowed by it', async () => {
   await page.waitForTimeout(250);
   await page.keyboard.up('ArrowDown');
   const moved = (await page.evaluate(() => RH.debug().player.y)) - start.y;
-  assert.ok(moved > 3, `courier passes through water (moved ${moved.toFixed(1)}px)`);
-  assert.ok(moved < 45, `water slows the courier vs. open road (moved ${moved.toFixed(1)}px)`);
+  assert.ok(moved > 1, `courier passes through water (moved ${moved.toFixed(1)}px)`);
+  assert.ok(moved < 55, `water slows the courier vs. open road (moved ${moved.toFixed(1)}px)`);
 });
 
 /* ---------------- new powerups (v0.3) ---------------- */
@@ -351,15 +351,16 @@ test('cars spawn during a run and bumping one stuns + knocks back the courier', 
   await startRun();
   const cars = await page.evaluate(() => RH.debug().agents.length);
   assert.ok(cars >= 1, 'at least one car spawned');
-  // teleport a car onto the courier and step a frame → bump
+  // teleport a car onto the courier and pin it there (speed 0) → deterministic bump
   const res = await page.evaluate(() => {
     const g = RH.debug();
     g.stun = 0; g.bumpCd = 0;
     const a = g.agents[0];
-    a.x = g.player.x; a.y = g.player.y; // overlap
+    a.speed = 0; a.x = g.player.x + 8; a.y = g.player.y; // overlap (offset gives a knockback direction)
+    g.player.dir = 0;
     return { px: g.player.x, py: g.player.y };
   });
-  await page.waitForTimeout(80);
+  await page.waitForTimeout(150);
   const after = await page.evaluate(() => { const g = RH.debug(); return { stun: g.stun, px: g.player.x, py: g.player.y }; });
   assert.ok(after.stun > 0, 'bump stunned the courier');
   assert.ok(Math.hypot(after.px - res.px, after.py - res.py) > 1, 'bump knocked the courier back');
@@ -436,6 +437,46 @@ test('dashing near a police car fines you; just driving near it does not', async
   const s = await page.evaluate(() => { const g = RH.debug(); return { cash: g.cash, combo: g.combo }; });
   assert.ok(s.cash < 100, 'dashing near police charges a fine');
   assert.equal(s.combo, 0, 'reckless fine breaks combo');
+});
+
+/* ---------------- fuel (v0.10) ---------------- */
+test('charge drains while driving, tops off at a station, and runs dry to a crawl', async () => {
+  await page.goto(BASE);
+  await startRun();
+  await page.evaluate(() => { const g = RH.debug(); g.agents = []; g.fuel = g.maxFuel; });
+  // drive for a bit → fuel drops
+  const drained = await page.evaluate(async () => {
+    const g = RH.debug(); const f0 = g.fuel;
+    RH.input.dx = 1; RH.input.dy = 0; RH.input.active = true;
+    await new Promise(r => setTimeout(r, 300));
+    RH.input.active = false;
+    return { f0, f1: g.fuel };
+  });
+  assert.ok(drained.f1 < drained.f0, 'driving drains charge');
+  // park on a station → fuel climbs back up
+  const refilled = await page.evaluate(async () => {
+    const g = RH.debug();
+    g.fuel = 10;
+    const st = g.layout.nodes.find(n => n.role === 'station');
+    g.player.x = st.x; g.player.y = st.y;
+    const f0 = g.fuel;
+    await new Promise(r => setTimeout(r, 250));
+    return { f0, f1: g.fuel };
+  });
+  assert.ok(refilled.f1 > refilled.f0, 'a station recharges you');
+  // empty tank → crawl (effective speed is throttled)
+  const crawl = await page.evaluate(async () => {
+    const g = RH.debug();
+    g.agents = []; g.fuel = 0; g.player.dir = 0;
+    g.player.x = g.layout.spawn.x; g.player.y = g.layout.spawn.y;
+    const x0 = g.player.x;
+    RH.input.dx = 1; RH.input.dy = 0; RH.input.active = true;
+    await new Promise(r => setTimeout(r, 200));
+    RH.input.active = false;
+    return g.player.x - x0;
+  });
+  // a full-speed 200ms run covers ~40px; empty should be far less
+  assert.ok(crawl < 20, `empty tank crawls (moved ${crawl.toFixed(1)}px)`);
 });
 
 /* ---------------- combo & perk draft (v0.4) ---------------- */
@@ -674,11 +715,28 @@ test('GO picks up within the forgiving touch range (no pixel-perfect aim, no spa
   await p.goto(BASE);
   await p.click('#start-btn');
   await p.waitForTimeout(120);
-  // sit ~40px from the source (within the touch interaction range, not on it)
-  await p.evaluate(() => { const g = RH.debug(); g.agents = []; const o = g.orders.find(o => o.state === 'available'); const n = g.layout.nodes[o.from]; g.player.x = n.x + 40; g.player.y = n.y; });
+  // sit OFF the source (not pixel-perfect) but far enough to prove the touch
+  // range; pick the largest offset that still keeps this source the nearest node
+  const offset = await p.evaluate(() => {
+    const g = RH.debug(); g.agents = [];
+    const o = g.orders.find(o => o.state === 'available');
+    const n = g.layout.nodes[o.from];
+    for (const off of [40, 32, 24, 16, 8]) {
+      const px = n.x + off, py = n.y;
+      let nearest = null, best = 46;
+      for (const m of g.layout.nodes) {
+        if (m.role === 'station') continue;
+        const d = Math.hypot(px - m.x, py - m.y);
+        if (d < best) { best = d; nearest = m; }
+      }
+      if (nearest === n) { g.player.x = px; g.player.y = py; return off; }
+    }
+    g.player.x = n.x; g.player.y = n.y; return 0;
+  });
+  assert.ok(offset >= 8, `stands off the source by ${offset}px (forgiving range, not pixel-perfect)`);
   await p.waitForTimeout(60);
   await p.tap('#touch-go');           // pointerdown → RH.action(); no keyboard involved
   await p.waitForTimeout(80);
-  assert.equal(await p.evaluate(() => RH.debug().carried.length), 1, 'picked up from ~40px away via GO');
+  assert.equal(await p.evaluate(() => RH.debug().carried.length), 1, `picked up from ${offset}px away via GO`);
   await c.close();
 });

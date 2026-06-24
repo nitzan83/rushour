@@ -23,7 +23,7 @@ on-screen prompt appears when you're in range) · `Shift` to dash · `M` to mute
 ## Test
 
 ```bash
-npm test           # unit + e2e (68 tests)
+npm test           # unit + e2e (71 tests)
 npm run test:unit  # pure-logic, fast, no browser
 npm run test:e2e   # full browser tests (Playwright; auto-installs Chromium)
 ```

@@ -70,7 +70,7 @@ test('Save.load returns defaults on empty storage', () => {
   const s = RH.Save.load();
   assert.equal(s.bank, 0);
   assert.equal(s.best, 0);
-  assert.deepEqual(s.upgrades, { speed: 0, capacity: 0, time: 0, pay: 0 });
+  assert.deepEqual(s.upgrades, { speed: 0, capacity: 0, time: 0, pay: 0, battery: 0 });
 });
 
 test('Save round-trips and merges partial upgrades', () => {
@@ -102,7 +102,7 @@ test('generateDowntown places 4 sources and 8 sinks on building edges', () => {
   assert.equal(RH.sinks(L).length, 8);
   for (const n of L.nodes) {
     assert.ok(n.x > 0 && n.x < 960 && n.y > 0 && n.y < 640);
-    assert.ok(['source', 'sink'].includes(n.role));
+    assert.ok(['source', 'sink', 'station'].includes(n.role));
     // node sits on a BUILDING cell whose access side is walkable (road, or mud
     // if terrain was sprinkled there — both are non-solid)
     assert.equal(RH.tileAt(L, n.cell.c, n.cell.r), RH.TILE.BUILDING);
@@ -206,7 +206,7 @@ test('tileAt treats out-of-bounds as building (solid border)', () => {
 test('Balance exposes the expected tuning shape', () => {
   const B = RH.Balance;
   assert.ok(B.player.baseSpeed > 0 && B.player.interactRange > 0);
-  assert.equal(Object.keys(B.upgrades).length, 4);
+  assert.ok(Object.keys(B.upgrades).length >= 4);
   assert.ok(Object.keys(B.powerups).length >= 4);
   assert.ok(B.run.maxMisses >= 1 && B.run.deliveriesPerLevel >= 1);
 });
@@ -288,6 +288,23 @@ test('perks are well-formed: a name, a desc, and at least one effect', () => {
     assert.ok(p.name && p.desc, `${p.id} has name+desc`);
     const hasEffect = p.mod || p.capacity || p.maxMisses || p.comboFast;
     assert.ok(hasEffect, `${p.id} has an effect`);
+  }
+});
+
+/* ---------------- fuel (v0.10) ---------------- */
+test('fuel config drains, refills, and crawls when empty; battery upgrade exists', () => {
+  const F = RH.Balance.fuel;
+  assert.ok(F.max > 0 && F.drainPerPx > 0 && F.refillPerSec > 0);
+  assert.ok(F.emptyMult > 0 && F.emptyMult < 1, 'empty = slow crawl, not a full stop');
+  assert.ok(F.stations >= 1, 'maps place at least one station');
+  assert.ok(RH.Balance.upgrades.battery.fuelPerLevel > 0, 'Bigger Battery raises max charge');
+});
+
+test('every district places charge stations', () => {
+  for (const d of RH.DISTRICTS) {
+    const L = d.gen(960, 640);
+    const stations = L.nodes.filter(n => n.role === 'station').length;
+    assert.equal(stations, RH.Balance.fuel.stations, `${d.name} has ${RH.Balance.fuel.stations} stations`);
   }
 });
 

@@ -81,7 +81,7 @@ This is the riskiest/most reusable piece — build and test it with **cars first
 - _Combine:_ fine path from v0.7; police are an Agent kind with a proximity
   check that only triggers during a dash.
 
-### v0.10 "Running on Empty" — fuel / charge  · **M–L**
+### v0.10 "Running on Empty" — fuel / charge  · ✅ shipped
 - The bike has **fuel/charge** that drains as you drive; a HUD gauge shows it.
   **Refuel at charge stations** (a new `node` kind) — drive up to top off.
   Run dry → you crawl until you reach a station (soft-fail pressure).

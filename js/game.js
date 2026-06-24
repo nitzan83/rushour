@@ -115,8 +115,11 @@
       bumpCd: 0,            // debounce so one contact bumps once
       dashTime: 0,          // >0 during a dash burst
       dashCd: 0,            // dash cooldown remaining
+      maxFuel: B.fuel.max * (1 + B.upgrades.battery.fuelPerLevel * save.upgrades.battery),
+      fuel: 0,              // set just below
       nearNode: null,       // node currently in interaction range (for prompt)
     };
+    game.fuel = game.maxFuel;
     spawnAgents();
     spawnOrder();
     showHUD(true);
@@ -128,6 +131,7 @@
   function activeMods() {
     const mods = game.upgradeMods.concat(game.perkMods);
     if (game.dashTime > 0) mods.push({ stat: 'speed', op: 'mul', value: B.player.dash.mult, source: 'dash' });
+    if (game.fuel <= 0) mods.push({ stat: 'speed', op: 'mul', value: B.fuel.emptyMult, source: 'empty' });
     for (const type in game.effects) {
       const def = POWERUPS[type];
       if (def) for (const m of def.mods) mods.push(m);
@@ -366,6 +370,7 @@
     const p = game.player;
     let best = null, bestD = interactRange();
     for (const n of game.layout.nodes) {
+      if (n.role === 'station') continue; // stations refuel on proximity, not SPACE/GO
       const d = dist(p.x, p.y, n.x, n.y);
       if (d < bestD) { bestD = d; best = n; }
     }
@@ -471,6 +476,15 @@
       }
     }
 
+    // fuel: drains with distance driven; tops off near a charge station
+    const movedDist = Math.hypot(g.player.x - prevX, g.player.y - prevY);
+    if (g.fuel > 0) g.fuel = Math.max(0, g.fuel - movedDist * B.fuel.drainPerPx);
+    for (const n of g.layout.nodes) {
+      if (n.role === 'station' && dist(g.player.x, g.player.y, n.x, n.y) < B.fuel.refuelRange) {
+        g.fuel = Math.min(g.maxFuel, g.fuel + B.fuel.refillPerSec * dt);
+      }
+    }
+
     // timers (freeze powerup pauses them)
     if (!g.effects.freeze) {
       for (const o of g.orders)
@@ -534,7 +548,8 @@
       const cfg = B.agents.kinds[a.kind];
       if (dist(px, py, a.x, a.y) >= g.player.r + a.r) continue;
       if (cfg.bump && g.bumpCd <= 0) {
-        const dx = g.player.x - a.x, dy = g.player.y - a.y, d = Math.hypot(dx, dy) || 1;
+        let dx = g.player.x - a.x, dy = g.player.y - a.y, d = Math.hypot(dx, dy);
+        if (d < 0.001) { dx = -Math.cos(g.player.dir); dy = -Math.sin(g.player.dir); d = 1; } // dead-on: shove backwards
         g.player.x += (dx / d) * B.agents.knockback;
         g.player.y += (dy / d) * B.agents.knockback;
         RH.resolveCollision(g.layout, g.player);
@@ -663,7 +678,16 @@
 
     // nodes
     for (const n of g.layout.nodes) {
-      if (n.role === 'source') {
+      if (n.role === 'station') {
+        // charge station — teal pad with a ⚡; pulses when you're topping off
+        const near = dist(g.player.x, g.player.y, n.x, n.y) < B.fuel.refuelRange;
+        ctx.fillStyle = n.color; ctx.globalAlpha = near ? 1 : 0.85;
+        roundRect(n.x - 13, n.y - 13, 26, 26, 6); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#06322b'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('⚡', n.x, n.y + 1);
+      } else if (n.role === 'source') {
         ctx.fillStyle = n.color;
         roundRect(n.x - 14, n.y - 14, 28, 28, 6); ctx.fill();
         ctx.fillStyle = 'rgba(0,0,0,0.25)';
@@ -831,6 +855,17 @@
       ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
       ctx.fillText(`${EFFECT_LABELS[f] || f.toUpperCase()} ${g.effects[f].toFixed(1)}s`, 14, H - 24 - i * 16);
     });
+
+    // fuel gauge — centered along the bottom (clear of the corner buttons)
+    const frac = Math.max(0, Math.min(1, g.fuel / g.maxFuel));
+    const fbw = 132, fbh = 9, fbx = (W - fbw) / 2, fby = H - 16;
+    ctx.fillStyle = 'rgba(17,19,31,0.7)'; roundRect(fbx - 2, fby - 2, fbw + 4, fbh + 4, 4); ctx.fill();
+    ctx.fillStyle = frac < 0.25 ? '#ff6b6b' : (frac < 0.5 ? '#ffcc4d' : '#43e0c0');
+    if (frac <= 0) ctx.fillStyle = (Math.sin(g.runTime * 10) > 0) ? '#ff6b6b' : '#7a2230';
+    roundRect(fbx, fby, fbw * frac, fbh, 3); ctx.fill();
+    ctx.fillStyle = '#e8ecf5'; ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(frac <= 0 ? '⚡ NEEDS CHARGE' : '⚡ CHARGE', W / 2, fby - 3);
 
     ctx.restore();
   }

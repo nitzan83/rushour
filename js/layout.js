@@ -79,6 +79,9 @@
       layout.nodes.push(mkNode(candidates[ci], 'source', REST_COLORS[i], ['food'], REST_SYMBOLS[i]));
     for (let i = 0; i < 8 && ci < candidates.length; i++, ci++)
       layout.nodes.push(mkNode(candidates[ci], 'sink', '#5fd97f', ['home']));
+    const stations = (RH.Balance && RH.Balance.fuel.stations) || 2;
+    for (let i = 0; i < stations && ci < candidates.length; i++, ci++)
+      layout.nodes.push(mkNode(candidates[ci], 'station', '#43e0c0', ['fuel'], '⚡'));
   }
 
   // sprinkle slow MUD onto random road tiles (not the spawn). Terrain variety

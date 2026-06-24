@@ -37,7 +37,7 @@
 
   /* ---------------- Save (persistent meta) ---------------- */
   const SAVE_KEY = 'rushhour_save_v2';
-  const DEFAULTS = { bank: 0, best: 0, upgrades: { speed: 0, capacity: 0, time: 0, pay: 0 } };
+  const DEFAULTS = { bank: 0, best: 0, upgrades: { speed: 0, capacity: 0, time: 0, pay: 0, battery: 0 } };
   RH.Save = {
     load() {
       try {
