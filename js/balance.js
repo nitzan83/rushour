@@ -14,6 +14,7 @@
       radius: 13,
       interactRange: 30,   // px: how close to a node to press SPACE
       baseCapacity: 2,     // bag slots before the Bigger Bag upgrade (bulky = 2 slots)
+      dash: { duration: 0.18, mult: 2.6, cooldown: 1.2 }, // quick burst of speed
     },
 
     run: {

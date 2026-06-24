@@ -216,3 +216,17 @@ body.touch #touch-stick, body.touch #touch-go { display: flex; }
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 #touch-go:active { filter: brightness(0.9); }
+#touch-dash {
+  position: absolute;
+  right: 150px; bottom: 48px;
+  width: 84px; height: 84px;
+  border-radius: 50%;
+  background: rgba(77, 208, 255, 0.9);
+  color: #06222e;
+  border: none;
+  font-size: 18px; font-weight: 800; letter-spacing: 1px;
+  align-items: center; justify-content: center;
+  z-index: 8; touch-action: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+#touch-dash:active { filter: brightness(0.85); }

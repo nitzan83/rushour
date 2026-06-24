@@ -19,7 +19,8 @@
   const knob = document.createElement('div'); knob.id = 'touch-knob';
   stick.appendChild(knob);
   const go = document.createElement('button'); go.id = 'touch-go'; go.textContent = 'GO';
-  wrap.appendChild(stick); wrap.appendChild(go);
+  const dash = document.createElement('button'); dash.id = 'touch-dash'; dash.textContent = 'DASH';
+  wrap.appendChild(stick); wrap.appendChild(go); wrap.appendChild(dash);
 
   const RADIUS = 48; // px of deflection for full tilt
   let stickId = null;
@@ -57,4 +58,5 @@
   // fires once per tap (no double-trigger from touch+mouse synthesis).
   const act = e => { e.preventDefault(); if (RH.action) RH.action(); };
   go.addEventListener('pointerdown', act);
+  dash.addEventListener('pointerdown', e => { e.preventDefault(); if (RH.dash) RH.dash(); });
 })();

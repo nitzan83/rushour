@@ -67,6 +67,7 @@ async function waitForAvailable(ms = 2500) {
 async function pickupFirstAvailable() {
   const src = await page.evaluate(() => {
     const g = RH.debug();
+    g.agents = []; // keep traffic from bumping the courier off-target in tests
     const o = g.orders.find(o => o.state === 'available');
     return o ? { x: g.layout.nodes[o.from].x, y: g.layout.nodes[o.from].y } : null;
   });
@@ -81,6 +82,7 @@ async function pickupFirstAvailable() {
 async function deliverCarried() {
   const dst = await page.evaluate(() => {
     const g = RH.debug();
+    g.agents = [];
     return { x: g.layout.nodes[g.carried[0].to].x, y: g.layout.nodes[g.carried[0].to].y };
   });
   await teleport(dst.x, dst.y);
@@ -259,6 +261,7 @@ test('a fragile order shatters on a hard wall crash (counts as a miss)', async (
         if (RH.tileAt(L, c, r) === RH.TILE.ROAD && RH.tileAt(L, c + 1, r) === RH.TILE.BUILDING) cell = { c, r };
     g.player.x = cell.c * T + T / 2; g.player.y = cell.r * T + T / 2;
     g.orders = [];
+    g.agents = [];             // no traffic interfering with the crash test
     g.spawnTimer = 999;        // no new spawns during the test
     g.carried = [{ id: 999, from: 0, to: 1, color: '#fff', symbol: 'A', state: 'carried',
                    time: 999, maxTime: 999, reward: 10, kind: 'fragile', slots: 1, fragile: true }];
@@ -280,7 +283,7 @@ test('the courier can wade through water but is slowed by it', async () => {
   const start = await page.evaluate(() => {
     const g = RH.debug();
     const L = RH.generateRiverside(960, 640);
-    Object.assign(g, { layout: L, orders: [], carried: [], powerups: [], spawnTimer: 999, effects: {} });
+    Object.assign(g, { layout: L, orders: [], carried: [], powerups: [], agents: [], spawnTimer: 999, effects: {} });
     // find a vertical run of water to wade straight down through
     let cell = null;
     for (let c = 0; c < L.cols && !cell; c++)
@@ -380,6 +383,35 @@ test('hitting a person fines you (cash drops, combo resets) without stunning', a
   assert.ok(after.cash < setup.cash, 'a fine was charged');
   assert.equal(after.combo, 0, 'fine breaks the combo');
   assert.ok(after.stun <= 0, 'a person does not stun you (only cars do)');
+});
+
+/* ---------------- dash (v0.8) ---------------- */
+test('dash gives a burst of speed and then goes on cooldown', async () => {
+  await page.goto(BASE);
+  await startRun();
+  // measure normal travel over a fixed time on open road
+  await page.evaluate(() => { const g = RH.debug(); g.player.dir = 0; g.stun = 0; g.dashCd = 0; g.agents = []; });
+  const normal = await page.evaluate(async () => {
+    const g = RH.debug(); const x0 = g.player.x;
+    RH.input.dx = 1; RH.input.dy = 0; RH.input.active = true;
+    await new Promise(r => setTimeout(r, 150));
+    const d = g.player.x - x0; RH.input.active = false; return d;
+  });
+  // now dash and measure travel over the same window
+  await page.evaluate(() => { const g = RH.debug(); g.player.x = g.layout.spawn.x; g.player.y = g.layout.spawn.y; g.dashCd = 0; });
+  const dashed = await page.evaluate(async () => {
+    const g = RH.debug(); const x0 = g.player.x;
+    g.player.dir = 0; RH.dash();
+    RH.input.dx = 1; RH.input.dy = 0; RH.input.active = true;
+    await new Promise(r => setTimeout(r, 150));
+    const d = g.player.x - x0; RH.input.active = false; return d;
+  });
+  assert.ok(dashed > normal, `dash should cover more ground (dash ${dashed.toFixed(0)} > normal ${normal.toFixed(0)})`);
+  // dash is on cooldown immediately after
+  assert.ok(await page.evaluate(() => RH.debug().dashCd > 0), 'dash on cooldown');
+  // a second dash while cooling does nothing to dashTime
+  const blocked = await page.evaluate(() => { const g = RH.debug(); const t = g.dashTime; RH.dash(); return g.dashTime <= Math.max(t, 0) + 0.001; });
+  assert.ok(blocked, 'cannot dash again while on cooldown');
 });
 
 /* ---------------- combo & perk draft (v0.4) ---------------- */
@@ -504,7 +536,7 @@ test('touch devices get on-screen controls that drive the courier', async () => 
   const x1 = await tpage.evaluate(() => RH.debug().player.x);
   assert.notEqual(x1, x0, 'the virtual stick moved the courier');
   // GO button triggers pick up
-  await tpage.evaluate(() => { const g = RH.debug(); const o = g.orders.find(o => o.state === 'available'); const n = g.layout.nodes[o.from]; g.player.x = n.x; g.player.y = n.y; });
+  await tpage.evaluate(() => { const g = RH.debug(); g.agents = []; const o = g.orders.find(o => o.state === 'available'); const n = g.layout.nodes[o.from]; g.player.x = n.x; g.player.y = n.y; });
   await tpage.waitForTimeout(40);
   await tpage.tap('#touch-go');
   await tpage.waitForTimeout(80);
@@ -619,7 +651,7 @@ test('GO picks up within the forgiving touch range (no pixel-perfect aim, no spa
   await p.click('#start-btn');
   await p.waitForTimeout(120);
   // sit ~40px from the source (within the touch interaction range, not on it)
-  await p.evaluate(() => { const g = RH.debug(); const o = g.orders.find(o => o.state === 'available'); const n = g.layout.nodes[o.from]; g.player.x = n.x + 40; g.player.y = n.y; });
+  await p.evaluate(() => { const g = RH.debug(); g.agents = []; const o = g.orders.find(o => o.state === 'available'); const n = g.layout.nodes[o.from]; g.player.x = n.x + 40; g.player.y = n.y; });
   await p.waitForTimeout(60);
   await p.tap('#touch-go');           // pointerdown → RH.action(); no keyboard involved
   await p.waitForTimeout(80);

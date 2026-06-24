@@ -291,6 +291,13 @@ test('perks are well-formed: a name, a desc, and at least one effect', () => {
   }
 });
 
+/* ---------------- dash (v0.8) ---------------- */
+test('dash config is a real speed boost on a cooldown', () => {
+  const d = RH.Balance.player.dash;
+  assert.ok(d.mult > 1, 'dash is faster than normal');
+  assert.ok(d.duration > 0 && d.cooldown > d.duration, 'a short burst with a longer cooldown');
+});
+
 /* ---------------- agents (v0.6 traffic) ---------------- */
 test('agent counts scale with level and cap out', () => {
   const A = RH.Balance.agents;

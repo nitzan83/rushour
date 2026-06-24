@@ -113,6 +113,8 @@
       agents: [],           // moving NPCs (cars, …)
       stun: 0,              // >0 while reeling from a car bump (can't drive)
       bumpCd: 0,            // debounce so one contact bumps once
+      dashTime: 0,          // >0 during a dash burst
+      dashCd: 0,            // dash cooldown remaining
       nearNode: null,       // node currently in interaction range (for prompt)
     };
     spawnAgents();
@@ -125,6 +127,7 @@
      Combine static upgrades + run perks + active powerups + terrain. */
   function activeMods() {
     const mods = game.upgradeMods.concat(game.perkMods);
+    if (game.dashTime > 0) mods.push({ stat: 'speed', op: 'mul', value: B.player.dash.mult, source: 'dash' });
     for (const type in game.effects) {
       const def = POWERUPS[type];
       if (def) for (const m of def.mods) mods.push(m);
@@ -394,6 +397,14 @@
   // bag space used by carried orders (bulky orders take 2 slots)
   const usedSlots = () => game.carried.reduce((s, o) => s + (o.slots || 1), 0);
 
+  // dash: a quick burst of speed in the current heading (Shift / DASH button)
+  function triggerDash() {
+    if (!game || game.paused || game.stun > 0 || game.dashCd > 0) return;
+    game.dashTime = B.player.dash.duration;
+    game.dashCd = B.player.dash.cooldown;
+    bus.emit('dash', {});
+  }
+
   /* ---------------- input ---------------- */
   const keys = {};
   window.addEventListener('keydown', e => {
@@ -401,6 +412,7 @@
     keys[k] = true;
     if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
     if (k === ' ') tryInteract();
+    if (k === 'shift') triggerDash();
   });
   window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
@@ -420,6 +432,8 @@
     if (keys['a'] || keys['arrowleft']) dx -= 1;
     if (keys['d'] || keys['arrowright']) dx += 1;
     if (RH.input.active) { dx += RH.input.dx; dy += RH.input.dy; }
+    // a dash lunges in the current heading even with no input held
+    if (g.dashTime > 0 && g.stun <= 0 && !dx && !dy) { dx = Math.cos(g.player.dir); dy = Math.sin(g.player.dir); }
     if (g.stun > 0) { dx = 0; dy = 0; } // reeling from a car bump
     const prevX = g.player.x, prevY = g.player.y;
     if (dx || dy) {
@@ -492,6 +506,9 @@
         g.powerups.splice(i, 1);
       } else if (p.life <= 0) g.powerups.splice(i, 1);
     }
+
+    // dash timers
+    g.dashTime -= dt; g.dashCd -= dt;
 
     // agents: drive/walk; cars bump the courier, people fine you on contact
     g.bumpCd -= dt; g.stun -= dt;
@@ -774,6 +791,7 @@
     }
     ctx.save(); ctx.translate(pl.x, pl.y); ctx.rotate(pl.dir);
     if (g.effects.ghost) ctx.globalAlpha = 0.45; // phasing
+    if (g.dashTime > 0) { ctx.fillStyle = 'rgba(255,204,77,0.4)'; ctx.beginPath(); ctx.arc(-16, 0, pl.r, 0, Math.PI * 2); ctx.fill(); }
     if (g.effects.speed) { ctx.fillStyle = 'rgba(77,208,255,0.3)'; ctx.beginPath(); ctx.arc(-12, 0, pl.r, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = '#ffcc4d'; ctx.beginPath(); ctx.arc(0, 0, pl.r, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#1a1d2e'; ctx.fillRect(2, -4, 8, 8);
@@ -852,6 +870,7 @@
 
   RH.debug = () => game;       // dev/test hook: inspect live run state
   RH.action = tryInteract;     // SPACE equivalent for the touch action button
+  RH.dash = triggerDash;       // DASH button / Shift key
   RH.isPlaying = () => !!game && !game.paused;
 
   document.getElementById('start-btn').addEventListener('click', startRun);

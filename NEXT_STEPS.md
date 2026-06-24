@@ -64,7 +64,7 @@ This is the riskiest/most reusable piece — build and test it with **cars first
 - _Combine:_ fines use the existing floater/EventBus juice; tune fine size in
   `balance.js`.
 
-### v0.8 "Dash" — a burst of speed  · **M**
+### v0.8 "Dash" — a burst of speed  · ✅ shipped
 - A **dash**: a short, fast lunge in your current direction on a cooldown.
   Helps weave through traffic and make tight timers.
 - Input: **touch** → a second button (DASH) beside GO; **desktop** → Shift (or

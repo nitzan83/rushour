@@ -1,5 +1,23 @@
 # Rush Hour — Release Notes
 
+## v0.8.0 — "Dash" (2026-06-24)
+
+A skill move for weaving through the new traffic.
+
+### ⚡ Dash
+- A short **burst of speed** in your current heading, on a cooldown. Lunges even
+  with no direction held.
+- Input: **Shift** (desktop) or a new **DASH** button beside GO (touch). Can't
+  dash while stunned or on cooldown; shows a gold trail while active.
+- Runs through the **Stats** speed funnel (same path as the ⚡ powerup), so it
+  composes with everything.
+
+### ✅ Tests
+- 64 → 66: dash covers more ground than normal travel and then locks on cooldown
+  (e2e); dash config is a real boost with a longer cooldown than duration (unit).
+
+---
+
 ## v0.7.0 — "Mind the People" (2026-06-24)
 
 The second hazard, on the same Agents system.
