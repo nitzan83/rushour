@@ -1,131 +1,135 @@
-# Rush Hour — Plan (rev 2)
+# Rush Hour — Plan (rev 3)
 
-_Rewritten 2026-06-23. Centerpiece of this revision: **the map changes between
-levels** — turning a run into a climb through a shifting city._
-
----
-
-## Where we are (shipped v0.1 → v0.4.3)
-
-The core loop is feature-complete, public, and tested (51 tests):
-
-- **Core:** roads + obstacle maps, free 8-dir driving w/ collision, SPACE
-  pickup/deliver, order timers, difficulty ramp, 3-miss fail.
-- **Maps:** Downtown + Riverside; `WATER` (slow wadeable shortcut) and `MUD`
-  (slow) tiles. **One layout per *run*, fixed for the whole run.**
-- **Roguelike:** between-level **perk draft** (1 of 3), **combo** scoring.
-- **Content:** 5 order kinds (rush/bulky/fragile/vip/normal), 6 powerups,
-  4 shop upgrades, persistent bank.
-- **Platform:** sound (mute), colorblind glyphs, **mobile/touch controls**,
-  fit-to-screen scaling. Live at https://nitzan83.github.io/rushour/.
-
-**The four seams still hold** (layout-as-data, generic nodes/orders, Stats
-resolver, EventBus) — the plan below leans on all of them.
-
-### The gap this rev targets
-Today, difficulty escalates only in *time* (faster spawns, tighter timers). The
-**space** stays still — the same streets for the whole run. Levels feel same-y.
-Making the **map change between levels** adds a second axis of progression and
-is the highest-leverage thing we can build next.
+_Rewritten 2026-06-24. New throughline: **each level adds a hazard** — the city
+gets busier and more dangerous as you climb. Built from the user's idea list,
+sequenced in priority order, with the existing roadmap folded in after and
+combined where it overlaps._
 
 ---
 
-## 🌆 North Star: "Districts" — the city changes as you climb
+## Where we are (shipped v0.1 → v0.5.2)
 
-Each level becomes a **district**. At the level-up beat (we already pause there
-for the perk draft), the map transitions: a new district loads. The run becomes
-a journey across an escalating city, not laps around one block.
+Public, mobile-ready, 59 tests. Core loop + 4 upgrades + 5 order kinds + 6
+powerups + perk draft + combo scoring + **district draft (map changes every
+level)** + sound + colorblind glyphs + **responsive board & touch controls**.
+Live at https://nitzan83.github.io/rushour/.
 
-### Design space — four mechanisms (how the map changes)
-
-| # | Mechanism | What happens at level-up | Feel | Cost |
-|---|-----------|--------------------------|------|------|
-| **M1** | **Swap layout** | Load a fresh layout (from the registry) | "New district each level" — max variety, clean | **S** |
-| **M2** | **Procedural district** | Generate a new map seeded by level; obstacle/terrain density scales up | Endless variety, difficulty via geometry | **L** |
-| **M3** | **District draft** | Player picks next map from 2–3 options, each with a tradeoff | Strategic — map becomes a roguelike choice | **M** (needs M1/M2) |
-| **M4** | **Mutate in place** | Keep the map, but add hazards (close roads, flood water, drop blocks) | Continuity — the city "degrades" around you | **M** |
-
-These compose: the likely end state is **M2 + M3** — procedural districts you
-*choose* between — with **M1** as the shippable first step.
-
-### The hard parts (shared infra, build once)
-
-1. **Transition handling.** Orders/powerups reference the old map's nodes. On
-   transition: clear available orders, **forgive carried orders (no miss)**,
-   clear powerups, reposition the courier to the new spawn. Combo and perks
-   **persist** (they're the reward for climbing). This happens inside the
-   existing level-up pause, so it reads as "entering the next district."
-2. **Connectivity guarantee.** Any swapped/generated/mutated map must keep
-   **every node reachable from spawn**. New helper `RH.isConnected(layout)`
-   (BFS flood over non-solid tiles); generators/mutators regenerate until valid.
-   Without this, a run can soft-lock. _This is the riskiest piece — build and
-   test it first._
-3. **Difficulty rebalance.** A new map each level adds navigation cost, so the
-   time/spawn ramp likely needs softening. Order time already scales with travel
-   distance (good), but the curve in `balance.js` will want a pass.
-4. **Telegraph.** Show the district **name + theme** on the level-up screen
-   ("Next: Riverside — mind the water"), so the change feels intentional.
-
-### Recommended phasing
-
-- **v0.5 "Districts" (M1 + infra):** connectivity check → swap to a random
-  registry layout each level → transition handling → district name on the draft
-  screen → difficulty rebalance. Ships the headline feel with low risk.
-- **v0.6 "Endless City" (M2):** `generateProcedural(level)` — density of
-  buildings/water/mud/closed-roads scales with level; seeded for daily runs
-  later. Real depth; depends on the connectivity infra from v0.5.
-- **v0.7 "Choose Your Route" (M3):** district draft — pick your next map from
-  2–3 candidates with tradeoffs, alongside (or merged with) the perk draft.
-- **Optional (M4):** mid-district hazard events for runs that want continuity.
+The four seams still carry everything: **layout-as-data**, **generic
+nodes/orders**, **Stats resolver**, **EventBus**. Two new pieces of infra below
+(an *agents* system and a *fuel* resource) plug into them.
 
 ---
 
-## Roadmap (reprioritized)
+## 🚦 North Star: "Escalating Hazards" — the city fights back
 
-### v0.5 "Districts" — ✅ shipped (M3 district draft)
-| # | Item | Effort | Seam | Notes |
-|---|------|--------|------|-------|
-| D.1 | **Connectivity check** | S | layout | ✅ `RH.isConnected(layout)` (BFS flood); districts validate on generation. |
-| D.2 | **Per-level map transition** | M | layout + EventBus | ✅ On `level:up`: swap map, forgive in-flight orders, clear powerups, reposition; combo/perks persist. |
-| D.3 | **District name + telegraph** | S | — | ✅ District name in HUD; name + blurb on the draft cards. |
-| D.4 | **Difficulty rebalance** | S | balance | ⏳ TODO — re-tune the spawn/timer ramp now that each level adds navigation cost. |
-| C.1 | **District draft (M3)** | M | layout + UI | ✅ Choose next map from 3 options (current excluded), then the perk draft. 4 districts in the pool. |
+Right now difficulty escalates via timers and changing maps. This thread adds
+**living hazards that ramp each level**: traffic, people, police, and the
+constant pressure of fuel. Each milestone is one hazard, introduced at a higher
+level so the player learns them one at a time.
 
-### v0.6 "Endless City"
-| # | Item | Effort | Seam | Notes |
-|---|------|--------|------|-------|
-| P.1 | **Procedural generator** | L | LayoutGenerator | `generateProcedural(level)`; complexity scales; validated by D.1. |
-| P.2 | **Theming/visual variety** | M | render | Distinct palettes per district so they read as different places. |
+### Shared infra to build first: the **Agents system** (foundation for H1–H4)
+Cars, pedestrians, cyclists, and police are all **moving agents** — build one
+system, reuse for all four:
+- `Agent = { kind, x, y, dir, speed, r, path/AI }` living in `game.agents`.
+- **Road-following AI** for vehicles: drive along the current road, pick a valid
+  turn at intersections (reuses `RH.tileAt` / `isSolid`); pedestrians wander
+  slowly and cross streets.
+- **Player interaction is per-kind** (handled in one collision pass, dispatched
+  by `kind`): bump / fine / police — see milestones.
+- **Spawn counts scale with level** via the difficulty director in
+  `balance.js` (e.g. `agents(level) → {cars, peds, police}`), so this *is* the
+  "more obstacles each level" mechanic. New `EventBus` events (`agent:hit`,
+  `fine`) drive juice/sound, no core edits.
+- Rendering: a distinct shape/color per kind; counts capped + pooled for perf.
 
-### v0.7 "Choose Your Route"
-| # | Item | Effort | Seam | Notes |
-|---|------|--------|------|-------|
-| C.1 | **District draft** | M | layout + UI | Pick next map from 2–3 options with tradeoffs; reuse the draft overlay. |
+This is the riskiest/most reusable piece — build and test it with **cars first**.
 
-### Platform & quality (parallel track, any time)
-| # | Item | Effort | Notes |
-|---|------|--------|-------|
-| Q.1 | **CI** | S | GitHub Actions running `npm test` on push. (Pages deploy workflow already added.) |
-| Q.2 | **Stats & achievements** | M | EventBus listeners + a stats panel. |
-| Q.3 | **Ice terrain** | S | Slippery tile (needs light momentum) — rounds out terrain. |
+---
+
+## Hazard milestones (in priority order)
+
+### v0.6 "Traffic" — NPC cars you bump into  · **L**
+- Cars drive the roads; colliding **bumps** you (knockback + brief slow), and a
+  hard bump can shatter fragile cargo (reuse the v0.4.1 crash path).
+- Builds the **Agents system** above. Cars start appearing at low levels and
+  **grow in number each level**.
+- _Combine:_ car density feeds the same per-level difficulty curve as spawns
+  /timers; on procedural maps later, scale with map size too.
+
+### v0.7 "Mind the People" — pedestrians & cyclists, hit = a fine  · **M**
+- Pedestrians (slow, on/near sidewalks) and cyclists (faster, on roads).
+  **Hitting one = an instant cash fine** (`fine` event → deduct cash, red
+  floater, combo break). They're avoid-targets, not walls.
+- Reuses the Agents system; introduced a level or two after cars.
+- _Combine:_ fines use the existing floater/EventBus juice; tune fine size in
+  `balance.js`.
+
+### v0.8 "Dash" — a burst of speed  · **M**
+- A **dash**: a short, fast lunge in your current direction on a cooldown.
+  Helps weave through traffic and make tight timers.
+- Input: **touch** → a second button (DASH) beside GO; **desktop** → Shift (or
+  double-tap a direction). Effect = a brief timed speed modifier + impulse
+  through the **Stats resolver**; cooldown shown on the button/HUD.
+- _Combine:_ rides the same modifier funnel as the ⚡ powerup; the powerup can
+  later reduce dash cooldown.
+
+### v0.9 "Heat" — police cars  · **M**
+- Police patrol like cars. **Dashing near a police car = a fine** (reckless
+  driving) — so dash is powerful but risky around them.
+- Depends on **v0.8 (dash)** + the Agents system. Police appear at higher
+  levels; a brief "spotted" flash telegraphs the fine.
+- _Combine:_ fine path from v0.7; police are an Agent kind with a proximity
+  check that only triggers during a dash.
+
+### v0.10 "Running on Empty" — fuel / charge  · **M–L**
+- The bike has **fuel/charge** that drains as you drive; a HUD gauge shows it.
+  **Refuel at charge stations** (a new `node` kind) — drive up to top off.
+  Run dry → you crawl until you reach a station (soft-fail pressure).
+- New **fuel resource** + a **station node kind** (generic-node seam) + a HUD
+  gauge. A shop **"Bigger Battery"** upgrade and a perk fit naturally.
+- _Combine:_ stations are just nodes (like restaurants/houses); the gauge is a
+  HUD addition; tank size is a Stats-style stat. Tighten range each level.
+
+---
+
+## Existing roadmap — folded in after, combined where relevant
+
+### Endless City — procedural districts  · **L**
+- `generateProcedural(level)` emitting the same `Layout`; building/water/mud
+  density scales with level. Validated by `RH.isConnected`.
+- _Combine:_ the agents difficulty curve (cars/peds/police counts) and fuel
+  range scale **together** with map complexity — one "level intensity" knob.
+  Best built **after the Agents system** so generated maps can place agents and
+  stations sensibly.
+
+### Quality & platform (parallel track, any time)
+| Item | Effort | Notes |
+|------|--------|-------|
+| **CI** | S | GitHub Actions running `npm test` on push (Pages deploy already automated). Do this soon to lock the growing suite. |
+| **Stats & achievements** | M | EventBus listeners (deliveries, fines dodged, longest dash combo…) + a panel. Hooks onto the new `fine`/`agent:hit` events. |
+| **Ice terrain** | S | Slippery tile (light momentum) — rounds out the `TILE_MODS` set. |
 
 ### v1.0 stretch
-| # | Item | Effort | Notes |
-|---|------|--------|-------|
-| V.1 | **Seeded daily challenge** | M | Same district sequence for everyone that day; needs P.1. |
-| V.2 | **Leaderboard** | S | Local first; hosted later. |
+| Item | Effort | Notes |
+|------|--------|-------|
+| **Seeded daily challenge** | M | Same district + agent sequence for everyone that day; needs procedural + a seedable RNG. |
+| **Local leaderboard** | S | Top scores in `localStorage`; hosted later. |
 
 ---
 
 ## Suggested trajectory
 ```
-v0.5  "Districts"        → map swaps each level + connectivity infra (M1)
-v0.6  "Endless City"     → procedural districts (M2)
-v0.7  "Choose Your Route"→ district draft (M3)
+v0.6  "Traffic"          → Agents system + NPC cars (bump)        [foundation]
+v0.7  "Mind the People"  → pedestrians & cyclists (hit = fine)
+v0.8  "Dash"             → dash burst (touch DASH button + Shift)
+v0.9  "Heat"             → police cars (dash near = fine)
+v0.10 "Running on Empty" → fuel/charge + stations + gauge
+v0.11 "Endless City"     → procedural districts (scales agents+fuel together)
 v1.0  "Open City"        → seeded daily + leaderboard + polish
+   (parallel: CI now; achievements + ice terrain whenever)
 ```
 
-**Immediate recommendation:** build **v0.5 "Districts"** starting with **D.1
-(connectivity check)** — it de-risks every map-change mechanism — then **D.2**
-(swap-per-level) for the headline feel. Decide M1-vs-procedural-first via the
-question accompanying this plan.
+**Immediate recommendation:** start **v0.6 "Traffic"** — it builds the Agents
+system that v0.7/v0.9 reuse, and "cars you dodge that multiply each level" is the
+biggest single jump in how the game *feels*. Quick win to do alongside: **CI**,
+so the 59-test suite runs on every push as this systems-heavy phase begins.
