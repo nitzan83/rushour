@@ -1,5 +1,22 @@
 # Rush Hour — Release Notes
 
+## v0.7.0 — "Mind the People" (2026-06-24)
+
+The second hazard, on the same Agents system.
+
+### 🚶 Pedestrians & cyclists — hit = a fine
+- **Pedestrians** (slow) and **cyclists** (faster) join the streets from level 2.
+- Unlike cars, they don't block you — **hitting one charges an instant cash
+  fine**, breaks your combo, and pops a red `-$N FINE` floater (with a per-person
+  cooldown so one contact fines once). Cars still bump/stun; people fine.
+- Counts scale per level via `agents.countsAt`; rendered as dots (vs. car rects).
+
+### ✅ Tests
+- 62 → 64: people appear from level 2 and carry a fine (not a bump); hitting a
+  person drops cash + resets combo + does **not** stun (e2e).
+
+---
+
 ## v0.6.0 — "Traffic" (2026-06-24)
 
 First hazard of the "escalating danger" arc — and the **Agents system** that the

@@ -299,6 +299,16 @@ test('agent counts scale with level and cap out', () => {
   assert.ok(A.countsAt(99).car <= A.maxTotal, 'capped at maxTotal');
 });
 
+test('people (cyclists/peds) appear from level 2 and carry a fine, not a bump', () => {
+  const A = RH.Balance.agents;
+  assert.equal(A.countsAt(1).ped, 0, 'no people at level 1');
+  assert.equal(A.countsAt(1).cyclist, 0);
+  assert.ok(A.countsAt(3).ped > 0 && A.countsAt(3).cyclist > 0, 'people appear later');
+  assert.ok(A.kinds.ped.fine > 0 && A.kinds.cyclist.fine > 0, 'people fine you');
+  assert.ok(!A.kinds.ped.bump && !A.kinds.cyclist.bump, 'people do not bump');
+  assert.ok(A.kinds.car.bump && !A.kinds.car.fine, 'cars bump, no fine');
+});
+
 test('a spawned car sits on a road and stays on roads as it drives', () => {
   const L = RH.generateDowntown(960, 640);
   const car = RH.Agents.spawn(L, 'car', RH.Balance.agents.kinds.car);

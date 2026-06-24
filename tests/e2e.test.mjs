@@ -362,6 +362,26 @@ test('cars spawn during a run and bumping one stuns + knocks back the courier', 
   assert.ok(Math.hypot(after.px - res.px, after.py - res.py) > 1, 'bump knocked the courier back');
 });
 
+test('hitting a person fines you (cash drops, combo resets) without stunning', async () => {
+  await page.goto(BASE);
+  await startRun();
+  const setup = await page.evaluate(() => {
+    const g = RH.debug();
+    g.cash = 100; g.combo = 5; g.stun = 0;
+    // inject a pedestrian on top of the courier
+    const cfg = RH.Balance.agents.kinds.ped;
+    g.agents.push({ kind: 'ped', r: cfg.r, speed: cfg.speed, color: cfg.color,
+      cc: 0, cr: 0, pc: 0, pr: 0, tc: 0, tr: 0, hdc: 0, hdr: 0, dir: 0, fineCd: 0,
+      x: g.player.x, y: g.player.y });
+    return { cash: g.cash };
+  });
+  await page.waitForTimeout(80);
+  const after = await page.evaluate(() => { const g = RH.debug(); return { cash: g.cash, combo: g.combo, stun: g.stun }; });
+  assert.ok(after.cash < setup.cash, 'a fine was charged');
+  assert.equal(after.combo, 0, 'fine breaks the combo');
+  assert.ok(after.stun <= 0, 'a person does not stun you (only cars do)');
+});
+
 /* ---------------- combo & perk draft (v0.4) ---------------- */
 test('combo builds on deliveries and resets on a miss', async () => {
   await page.goto(BASE);

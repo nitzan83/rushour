@@ -56,7 +56,7 @@ This is the riskiest/most reusable piece — build and test it with **cars first
 - _Combine:_ car density feeds the same per-level difficulty curve as spawns
   /timers; on procedural maps later, scale with map size too.
 
-### v0.7 "Mind the People" — pedestrians & cyclists, hit = a fine  · **M**
+### v0.7 "Mind the People" — pedestrians & cyclists, hit = a fine  · ✅ shipped
 - Pedestrians (slow, on/near sidewalks) and cyclists (faster, on roads).
   **Hitting one = an instant cash fine** (`fine` event → deduct cash, red
   floater, combo break). They're avoid-targets, not walls.

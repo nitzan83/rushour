@@ -23,7 +23,7 @@ on-screen prompt appears when you're in range) · `M` to mute/unmute. On phones:
 ## Test
 
 ```bash
-npm test           # unit + e2e (62 tests)
+npm test           # unit + e2e (64 tests)
 npm run test:unit  # pure-logic, fast, no browser
 npm run test:e2e   # full browser tests (Playwright; auto-installs Chromium)
 ```

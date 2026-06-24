@@ -228,6 +228,10 @@
   bus.on('powerup:grabbed', ({ p }) => burst(p.x, p.y, p.color, 16));
   bus.on('order:missed', () => { game.shake = 0.4; });
   bus.on('agent:hit', ({ agent }) => burst(agent.x, agent.y, agent.color, 8));
+  bus.on('fine', ({ agent, amount }) => {
+    burst(agent.x, agent.y, '#ff6b6b', 10);
+    game.floaters.push({ x: game.player.x, y: game.player.y - 16, text: `-$${amount} FINE`, color: '#ff6b6b', big: true, life: 1.2, age: 0 });
+  });
   // Level-up flow: choose a new DISTRICT (map changes), then a perk.
   bus.on('level:up', ({ level }) => openDistrictDraft(level));
 
@@ -489,12 +493,16 @@
       } else if (p.life <= 0) g.powerups.splice(i, 1);
     }
 
-    // agents (cars): drive the roads and bump the courier on contact
+    // agents: drive/walk; cars bump the courier, people fine you on contact
     g.bumpCd -= dt; g.stun -= dt;
-    for (const a of g.agents) RH.Agents.step(g.layout, a, dt);
+    for (const a of g.agents) {
+      RH.Agents.step(g.layout, a, dt);
+      if (a.fineCd > 0) a.fineCd -= dt;
+    }
     for (const a of g.agents) {
       const cfg = B.agents.kinds[a.kind];
-      if (cfg.bump && g.bumpCd <= 0 && dist(px, py, a.x, a.y) < g.player.r + a.r) {
+      if (dist(px, py, a.x, a.y) >= g.player.r + a.r) continue;
+      if (cfg.bump && g.bumpCd <= 0) {
         const dx = g.player.x - a.x, dy = g.player.y - a.y, d = Math.hypot(dx, dy) || 1;
         g.player.x += (dx / d) * B.agents.knockback;
         g.player.y += (dy / d) * B.agents.knockback;
@@ -502,6 +510,13 @@
         g.stun = B.agents.bumpStun; g.bumpCd = B.agents.bumpCooldown;
         g.shake = Math.max(g.shake, 0.35);
         bus.emit('agent:hit', { agent: a });
+      } else if (cfg.fine && (a.fineCd || 0) <= 0) {
+        const amount = Math.min(g.cash, cfg.fine);
+        g.cash -= amount;
+        g.combo = 0;
+        a.fineCd = B.agents.fineCooldown;
+        g.shake = Math.max(g.shake, 0.25);
+        bus.emit('fine', { agent: a, amount: cfg.fine });
       }
     }
 
@@ -729,16 +744,22 @@
     }
     ctx.globalAlpha = 1;
 
-    // agents (cars): a body with a darker windshield, oriented by heading
+    // agents: cars are rects (windshield), people are dots (hit = fine)
     for (const a of g.agents) {
-      ctx.save();
-      ctx.translate(a.x, a.y);
-      ctx.rotate(a.dir);
-      ctx.fillStyle = a.color;
-      roundRect(-a.r, -a.r * 0.7, a.r * 2, a.r * 1.4, 4); ctx.fill();
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      roundRect(a.r * 0.1, -a.r * 0.5, a.r * 0.7, a.r, 2); ctx.fill();
-      ctx.restore();
+      if (a.kind === 'car') {
+        ctx.save();
+        ctx.translate(a.x, a.y); ctx.rotate(a.dir);
+        ctx.fillStyle = a.color;
+        roundRect(-a.r, -a.r * 0.7, a.r * 2, a.r * 1.4, 4); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        roundRect(a.r * 0.1, -a.r * 0.5, a.r * 0.7, a.r, 2); ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.fillStyle = a.color;
+        ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.30)';
+        ctx.beginPath(); ctx.arc(a.x, a.y, a.r * 0.45, 0, Math.PI * 2); ctx.fill();
+      }
     }
 
     // player
